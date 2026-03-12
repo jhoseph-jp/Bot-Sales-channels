@@ -1,0 +1,24 @@
+{
+    "mercadolivre": {
+        "client_id": "7357983237625208",
+        "client_secret": "vYniGqGxrHx9TVUXmNQeodVxA9BE3I9F",
+        "access_token": "APP_USR-7357983237625208-030423-29a8220f0cd8bc7fe96019183a9d2898-198804566",
+        "refresh_token": "TG-69a8f8e07838f900019e3142-198804566"
+    },
+    "telegram": {
+        "token": "8767940791:AAEdz31nbalxNmu8INlQpXHPv9CYyM0Drmw",
+        "chat_id": "-1003882498931"
+    },
+    "filters": {
+        "min_discount": 0,
+        "categories": []
+    },
+    "affiliate": {
+        "matt_tool": "79633859",
+        "matt_word": "jhosephpereiradasilva",
+        "ref": "BAMtMBc+zOOHZtYWqMFdx0338AJ/pQMvDRB2XbW+WVe30XiOG3oV4vCDVxv9ss9Z3GAlMKr24cy8ZfcMQvYQA4D5s88aQPj/kB9k4V0yg95mFgiYWw/+apP7AujfmH6mRg/6fahHxr9tgQaMH2vpQq8FDgBsWgxHFHOiCdFT6NJ7SUikG32Mojqm/1kj2hY9X9axoA=="
+    },
+    "settings": {
+        "check_interval_minutes": 30
+    }
+}
