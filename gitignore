@@ -1,0 +1,38 @@
+# Variáveis de ambiente — NUNCA commitar
+.env
+.env.dev
+.env.prod
+.env.local
+.env.*.local
+
+# Dependências
+node_modules/
+
+# Banco de dados
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Build
+dist/
+build/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Docker
+docker-compose.override.yml

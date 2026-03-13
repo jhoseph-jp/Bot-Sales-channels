@@ -1,0 +1,345 @@
+[2026-03-12 22:31:14] [INFO] 🚀 Iniciando bot de ofertas {"service":"ml-bot","environment":"development","channel":"-1003882498931"}
+[2026-03-12 22:31:14] [INFO] Banco de dados inicializado com sucesso {"service":"ml-bot","path":"data/bot.db"}
+[2026-03-12 22:31:14] [INFO] Bot Telegram inicializado com sucesso {"service":"ml-bot"}
+[2026-03-12 22:31:14] [INFO] Configurando tarefas agendadas {"service":"ml-bot","offersInterval":"*/2 * * * *","couponsInterval":"0 * * * *"}
+[2026-03-12 22:31:14] [INFO] ✅ Tarefas agendadas configuradas {"service":"ml-bot"}
+[2026-03-12 22:31:14] [INFO] ✅ Bot iniciado com sucesso {"service":"ml-bot"}
+[2026-03-12 22:31:14] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:31:14] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:31:14] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:221:5)
+[2026-03-12 22:31:14] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:31:14] [DEBUG] Iniciando monitoramento de cupons {"service":"ml-bot"}
+[2026-03-12 22:31:14] [INFO] Buscando cupons ativos {"service":"ml-bot"}
+[2026-03-12 22:31:14] [ERROR] Erro ao buscar cupons {"service":"ml-bot","errorMessage":"Request failed with status code 404"}
+AxiosError: Request failed with status code 404
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at IncomingMessage.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at IncomingMessage.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.getActiveCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:159:22)
+    at async monitorCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:145:21)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:222:5)
+[2026-03-12 22:31:14] [WARN] Nenhum cupom encontrado {"service":"ml-bot"}
+[2026-03-12 22:31:14] [INFO] 🎯 Bot aguardando próximas tarefas agendadas... {"service":"ml-bot"}
+[2026-03-12 22:32:00] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:32:00] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:32:00] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async Task._execution (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:69:7)
+[2026-03-12 22:32:00] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:34:00] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:34:00] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:34:00] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async Task._execution (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:69:7)
+[2026-03-12 22:34:00] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:35:13] [INFO] 📋 Recebido sinal SIGINT, encerrando gracefully... {"service":"ml-bot"}
+[2026-03-12 22:41:46] [INFO] 🚀 Iniciando bot de ofertas {"service":"ml-bot","environment":"development","channel":"-1003882498931"}
+[2026-03-12 22:41:46] [INFO] Banco de dados inicializado com sucesso {"service":"ml-bot","path":"data/bot.db"}
+[2026-03-12 22:41:46] [INFO] Bot Telegram inicializado com sucesso {"service":"ml-bot"}
+[2026-03-12 22:41:46] [INFO] Configurando tarefas agendadas {"service":"ml-bot","offersInterval":"*/2 * * * *","couponsInterval":"0 * * * *"}
+[2026-03-12 22:41:46] [INFO] ✅ Tarefas agendadas configuradas {"service":"ml-bot"}
+[2026-03-12 22:41:46] [INFO] ✅ Bot iniciado com sucesso {"service":"ml-bot"}
+[2026-03-12 22:41:46] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:41:46] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:41:46] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:221:5)
+[2026-03-12 22:41:46] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:41:46] [DEBUG] Iniciando monitoramento de cupons {"service":"ml-bot"}
+[2026-03-12 22:41:46] [INFO] Buscando cupons ativos {"service":"ml-bot"}
+[2026-03-12 22:41:46] [ERROR] Erro ao buscar cupons {"service":"ml-bot","errorMessage":"Request failed with status code 404"}
+AxiosError: Request failed with status code 404
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at IncomingMessage.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at IncomingMessage.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.getActiveCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:159:22)
+    at async monitorCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:145:21)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:222:5)
+[2026-03-12 22:41:46] [WARN] Nenhum cupom encontrado {"service":"ml-bot"}
+[2026-03-12 22:41:46] [INFO] 🎯 Bot aguardando próximas tarefas agendadas... {"service":"ml-bot"}
+[2026-03-12 22:42:00] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:42:00] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:42:00] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async Task._execution (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:69:7)
+[2026-03-12 22:42:00] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:48:37] [INFO] 🚀 Iniciando bot de ofertas {"service":"ml-bot","environment":"development","channel":"-1003882498931"}
+[2026-03-12 22:48:37] [INFO] Banco de dados inicializado com sucesso {"service":"ml-bot","path":"data/bot.db"}
+[2026-03-12 22:48:37] [INFO] Bot Telegram inicializado com sucesso {"service":"ml-bot"}
+[2026-03-12 22:48:37] [INFO] Configurando tarefas agendadas {"service":"ml-bot","offersInterval":"*/2 * * * *","couponsInterval":"0 * * * *"}
+[2026-03-12 22:48:37] [INFO] ✅ Tarefas agendadas configuradas {"service":"ml-bot"}
+[2026-03-12 22:48:37] [INFO] ✅ Bot iniciado com sucesso {"service":"ml-bot"}
+[2026-03-12 22:48:37] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:48:37] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:48:37] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:221:5)
+[2026-03-12 22:48:37] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:48:37] [DEBUG] Iniciando monitoramento de cupons {"service":"ml-bot"}
+[2026-03-12 22:48:37] [INFO] Buscando cupons ativos {"service":"ml-bot"}
+[2026-03-12 22:48:37] [ERROR] Erro ao buscar cupons {"service":"ml-bot","errorMessage":"Request failed with status code 404"}
+AxiosError: Request failed with status code 404
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at IncomingMessage.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at IncomingMessage.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.getActiveCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:159:22)
+    at async monitorCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:145:21)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:222:5)
+[2026-03-12 22:48:37] [WARN] Nenhum cupom encontrado {"service":"ml-bot"}
+[2026-03-12 22:48:37] [INFO] 🎯 Bot aguardando próximas tarefas agendadas... {"service":"ml-bot"}
+[2026-03-12 22:50:00] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:50:00] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:50:01] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async Task._execution (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:69:7)
+[2026-03-12 22:50:01] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:52:00] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:52:00] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:52:01] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async Task._execution (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:69:7)
+[2026-03-12 22:52:01] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:54:00] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:54:00] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:54:00] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async Task._execution (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:69:7)
+[2026-03-12 22:54:00] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:56:00] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:56:00] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:56:00] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async Task._execution (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:69:7)
+[2026-03-12 22:56:00] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:56:02] [INFO] 📋 Recebido sinal SIGINT, encerrando gracefully... {"service":"ml-bot"}
+[2026-03-12 22:56:09] [INFO] 🚀 Iniciando bot de ofertas {"service":"ml-bot","environment":"development","channel":"-1003882498931"}
+[2026-03-12 22:56:09] [INFO] Banco de dados inicializado com sucesso {"service":"ml-bot","path":"data/bot.db"}
+[2026-03-12 22:56:09] [INFO] Bot Telegram inicializado com sucesso {"service":"ml-bot"}
+[2026-03-12 22:56:09] [INFO] Configurando tarefas agendadas {"service":"ml-bot","offersInterval":"*/2 * * * *","couponsInterval":"0 * * * *"}
+[2026-03-12 22:56:09] [INFO] ✅ Tarefas agendadas configuradas {"service":"ml-bot"}
+[2026-03-12 22:56:09] [INFO] ✅ Bot iniciado com sucesso {"service":"ml-bot"}
+[2026-03-12 22:56:09] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 22:56:09] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 22:56:09] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:221:5)
+[2026-03-12 22:56:09] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 22:56:09] [DEBUG] Iniciando monitoramento de cupons {"service":"ml-bot"}
+[2026-03-12 22:56:09] [INFO] Buscando cupons ativos {"service":"ml-bot"}
+[2026-03-12 22:56:10] [ERROR] Erro ao buscar cupons {"service":"ml-bot","errorMessage":"Request failed with status code 404"}
+AxiosError: Request failed with status code 404
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at IncomingMessage.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at IncomingMessage.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.getActiveCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:159:22)
+    at async monitorCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:145:21)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:222:5)
+[2026-03-12 22:56:10] [WARN] Nenhum cupom encontrado {"service":"ml-bot"}
+[2026-03-12 22:56:10] [INFO] 🎯 Bot aguardando próximas tarefas agendadas... {"service":"ml-bot"}
+[2026-03-12 23:25:19] [INFO] 🚀 Iniciando bot de ofertas {"service":"ml-bot","environment":"development","channel":"-1003882498931"}
+[2026-03-12 23:25:19] [INFO] Banco de dados inicializado com sucesso {"service":"ml-bot","path":"data/bot.db"}
+[2026-03-12 23:25:19] [INFO] Bot Telegram inicializado com sucesso {"service":"ml-bot"}
+[2026-03-12 23:25:19] [INFO] Configurando tarefas agendadas {"service":"ml-bot","offersInterval":"*/2 * * * *","couponsInterval":"0 * * * *"}
+[2026-03-12 23:25:19] [INFO] ✅ Tarefas agendadas configuradas {"service":"ml-bot"}
+[2026-03-12 23:25:19] [INFO] ✅ Bot iniciado com sucesso {"service":"ml-bot"}
+[2026-03-12 23:25:19] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 23:25:19] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 23:25:19] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:221:5)
+[2026-03-12 23:25:19] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 23:25:19] [DEBUG] Iniciando monitoramento de cupons {"service":"ml-bot"}
+[2026-03-12 23:25:19] [INFO] Buscando cupons ativos {"service":"ml-bot"}
+[2026-03-12 23:25:20] [ERROR] Erro ao buscar cupons {"service":"ml-bot","errorMessage":"Request failed with status code 404"}
+AxiosError: Request failed with status code 404
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at IncomingMessage.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at IncomingMessage.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.getActiveCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:159:22)
+    at async monitorCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:145:21)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:222:5)
+[2026-03-12 23:25:20] [WARN] Nenhum cupom encontrado {"service":"ml-bot"}
+[2026-03-12 23:25:20] [INFO] 🎯 Bot aguardando próximas tarefas agendadas... {"service":"ml-bot"}
+[2026-03-12 23:26:59] [INFO] 🚀 Iniciando bot de ofertas {"service":"ml-bot","environment":"development","channel":"-1003882498931"}
+[2026-03-12 23:26:59] [INFO] Banco de dados inicializado com sucesso {"service":"ml-bot","path":"data/bot.db"}
+[2026-03-12 23:26:59] [INFO] Bot Telegram inicializado com sucesso {"service":"ml-bot"}
+[2026-03-12 23:26:59] [INFO] Configurando tarefas agendadas {"service":"ml-bot","offersInterval":"*/2 * * * *","couponsInterval":"0 * * * *"}
+[2026-03-12 23:26:59] [INFO] ✅ Tarefas agendadas configuradas {"service":"ml-bot"}
+[2026-03-12 23:26:59] [INFO] ✅ Bot iniciado com sucesso {"service":"ml-bot"}
+[2026-03-12 23:26:59] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 23:26:59] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 23:26:59] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:221:5)
+[2026-03-12 23:26:59] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 23:26:59] [DEBUG] Iniciando monitoramento de cupons {"service":"ml-bot"}
+[2026-03-12 23:26:59] [INFO] Buscando cupons ativos {"service":"ml-bot"}
+[2026-03-12 23:26:59] [ERROR] Erro ao buscar cupons {"service":"ml-bot","errorMessage":"Request failed with status code 404"}
+AxiosError: Request failed with status code 404
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at IncomingMessage.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at IncomingMessage.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.getActiveCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:159:22)
+    at async monitorCoupons (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:145:21)
+    at async start (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:222:5)
+[2026-03-12 23:26:59] [WARN] Nenhum cupom encontrado {"service":"ml-bot"}
+[2026-03-12 23:26:59] [INFO] 🎯 Bot aguardando próximas tarefas agendadas... {"service":"ml-bot"}
+[2026-03-12 23:28:00] [DEBUG] Iniciando monitoramento de ofertas {"service":"ml-bot"}
+[2026-03-12 23:28:00] [INFO] Buscando ofertas no Mercado Livre {"service":"ml-bot","query":"eletrônicos","limit":20}
+[2026-03-12 23:28:00] [ERROR] Erro ao buscar ofertas {"service":"ml-bot","query":"eletrônicos","errorMessage":"Request failed with status code 403"}
+AxiosError: Request failed with status code 403
+    at settle (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at Unzip.handleStreamEnd (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at Unzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1696:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\Users\jhose\source\VSCode\ml-bot-node\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.searchDiscountedOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\services\mercadoLivreService.js:59:22)
+    at async monitorOffers (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:97:20)
+    at async Task._execution (C:\Users\jhose\source\VSCode\ml-bot-node\src\index.js:69:7)
+[2026-03-12 23:28:00] [WARN] Nenhuma oferta encontrada {"service":"ml-bot"}
+[2026-03-12 23:28:06] [INFO] 📋 Recebido sinal SIGINT, encerrando gracefully... {"service":"ml-bot"}

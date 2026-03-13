@@ -1,21 +1,38 @@
 {
   "name": "ml-bot-node",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Bot profissional de ofertas do Mercado Livre para Telegram",
+  "main": "src/index.js",
+  "type": "commonjs",
   "scripts": {
-    "dev": "NODE_ENV=development node index.js",
-    "prod": "NODE_ENV=production node index.js",
+    "dev": "cross-env NODE_ENV=development node src/index.js",
+    "prod": "cross-env NODE_ENV=production node src/index.js",
+    "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "telegram",
+    "bot",
+    "mercado-livre",
+    "ofertas",
+    "scraping"
+  ],
+  "author": "JP Promos",
   "license": "ISC",
-  "description": "Bot de ofertas do Mercado Livre para Telegram",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "dependencies": {
     "axios": "^1.13.6",
-    "cheerio": "^1.2.0",
+    "axios-retry": "^3.8.0",
+    "better-sqlite3": "^9.2.2",
     "dotenv": "^17.3.1",
     "fs-extra": "^11.3.4",
-    "node-telegram-bot-api": "^0.67.0"
+    "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.67.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0"
   }
 }
