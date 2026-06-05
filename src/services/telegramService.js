@@ -103,7 +103,7 @@ class TelegramService {
     msg += `🔗 ${link}`;
 
     try {
-      await this.bot.sendPhoto(this.chatId, { source: fs.createReadStream(ML_LOGO_PATH), filename: 'ml-logo.jpg', contentType: 'image/jpeg' }, { caption: msg, parse_mode: 'Markdown' });
+      await this.bot.sendPhoto(this.chatId, fs.createReadStream(ML_LOGO_PATH), { caption: msg, parse_mode: 'Markdown' });
     } catch (err) {
       logger.error('Foto cupom falhou:', err.message);
       await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'Markdown' }).catch(e => logger.error('Mensagem cupom:', e.message));
@@ -113,7 +113,7 @@ class TelegramService {
   async sendCouponExpiredMessage(coupon) {
     const msg = `❌ *Cupom encerrado*\n\n🏷 \`${coupon.code}\`\nFique atento para os próximos cupons!\n\n🔗 https://www.mercadolivre.com.br/cupons`;
     try {
-      await this.bot.sendPhoto(this.chatId, { source: fs.createReadStream(ML_LOGO_PATH), filename: 'ml-logo.jpg', contentType: 'image/jpeg' }, { caption: msg, parse_mode: 'Markdown' });
+      await this.bot.sendPhoto(this.chatId, fs.createReadStream(ML_LOGO_PATH), { caption: msg, parse_mode: 'Markdown' });
     } catch {
       await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'Markdown' }).catch(() => {});
     }
