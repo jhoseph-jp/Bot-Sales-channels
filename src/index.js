@@ -140,6 +140,9 @@ class BotApp {
 
       let newCount = 0;
       for (const coupon of allCoupons) {
+        // Nunca posta cupom sem código real
+        if (!coupon.code || !coupon.code.trim()) continue;
+
         if (!await db.isCouponProcessed(coupon.id)) {
           logger.info(`Novo cupom [${coupon.source}]: ${coupon.code} — ${coupon.discountText}`);
           await db.saveCoupon(coupon);
@@ -148,7 +151,7 @@ class BotApp {
         }
       }
 
-      logger.info(`[Cupons] ${newCount} novo(s) | ${allCoupons.length} encontrado(s) nas fontes.`);
+      logger.info(`[Cupons] ${newCount} novo(s) | ${allCoupons.length} encontrado(s).`);
     } catch (err) {
       logger.error('[Cupons] Erro:', err.message);
     } finally {

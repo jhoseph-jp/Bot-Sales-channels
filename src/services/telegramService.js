@@ -27,10 +27,9 @@ class TelegramService {
     while (this.queue.length > 0) {
       const { type, data } = this.queue.shift();
       try {
-        if (type === 'offer')          await this.sendOfferMessage(data);
-        else if (type === 'coupon')    await this.sendCouponMessage(data);
-        else if (type === 'coupon-expired') await this.sendCouponExpiredMessage(data);
-        await new Promise(r => setTimeout(r, 1500)); // rate limit
+        if (type === 'offer')       await this.sendOfferMessage(data);
+        else if (type === 'coupon') await this.sendCouponMessage(data);
+        await new Promise(r => setTimeout(r, 1500));
       } catch (error) {
         logger.error(`Fila (${type}): ${error.message}`);
       }
@@ -38,9 +37,8 @@ class TelegramService {
     this.isProcessing = false;
   }
 
-  enqueueOffer(offer)          { this.queue.push({ type: 'offer',          data: offer });   this.processQueue(); }
-  enqueueCoupon(coupon)        { this.queue.push({ type: 'coupon',         data: coupon });  this.processQueue(); }
-  enqueueCouponExpired(coupon) { this.queue.push({ type: 'coupon-expired', data: coupon });  this.processQueue(); }
+  enqueueOffer(offer)   { this.queue.push({ type: 'offer',  data: offer });  this.processQueue(); }
+  enqueueCoupon(coupon) { this.queue.push({ type: 'coupon', data: coupon }); this.processQueue(); }
 
   // ─────────────────────────────────────────────
   // Mensagem de Oferta
@@ -49,44 +47,33 @@ class TelegramService {
   async sendOfferMessage(offer) {
     if (!offer.discount || offer.discount <= 0) return;
 
-    const emoji      = offer.emoji || '✨';
-    const original   = PriceCalculator.formatPrice(offer.originalPrice);
-    const current    = PriceCalculator.formatPrice(offer.price);
-    const isFlash    = offer.isFlash;
+    const emoji    = offer.emoji || '✨';
+    const original = PriceCalculator.formatPrice(offer.originalPrice);
+    const current  = PriceCalculator.formatPrice(offer.price);
 
     let msg = '';
-
-    if (isFlash) {
-      msg += `⚡ OFERTA RELÂMPAGO!\n\n`;
-    }
+    if (offer.isFlash) msg += `⚡ OFERTA RELÂMPAGO!\n\n`;
 
     msg += `${emoji} ${offer.title}\n\n`;
     msg += `~~${original}~~\n`;
     msg += `💰 *${current}*\n`;
     msg += `📉 ${offer.discount}% OFF\n`;
 
-    if (offer.timer) {
-      msg += `⏱ Termina em: ${offer.timer}\n`;
-    }
-
-    if (offer.coupon && offer.coupon.trim()) {
-      msg += `\n🎟 Cupom: \`${offer.coupon}\`\n`;
-    }
+    if (offer.timer)                     msg += `⏱ Termina em: ${offer.timer}\n`;
+    if (offer.coupon && offer.coupon.trim()) msg += `\n🎟 Cupom: \`${offer.coupon}\`\n`;
 
     msg += `\n🔗 ${offer.link}`;
-
-    const opts = { parse_mode: 'Markdown', disable_web_page_preview: false };
 
     if (offer.image) {
       try {
         await this.bot.sendPhoto(this.chatId, offer.image, { caption: msg, parse_mode: 'Markdown' });
         return;
       } catch (err) {
-        logger.debug(`Foto falhou, enviando texto: ${err.message}`);
+        logger.debug(`Foto oferta falhou, enviando texto: ${err.message}`);
       }
     }
 
-    await this.bot.sendMessage(this.chatId, msg, opts);
+    await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'Markdown', disable_web_page_preview: false });
   }
 
   // ─────────────────────────────────────────────
@@ -94,7 +81,12 @@ class TelegramService {
   // ─────────────────────────────────────────────
 
   async sendCouponMessage(coupon) {
-    const discount = coupon.discountText || coupon.description?.substring(0, 120) || '';
+    if (!coupon.code || !coupon.code.trim()) {
+      logger.warn('Cupom ignorado: sem código real.');
+      return;
+    }
+
+    const discount = coupon.discountText || '';
     const link     = coupon.link || 'https://www.mercadolivre.com.br/cupons';
 
     let msg = `🔥 *Novo Cupom Mercado Livre!*\n\n`;
@@ -103,19 +95,15 @@ class TelegramService {
     msg += `🔗 ${link}`;
 
     try {
-      await this.bot.sendPhoto(this.chatId, fs.createReadStream(ML_LOGO_PATH), { caption: msg, parse_mode: 'Markdown' });
+      await this.bot.sendPhoto(
+        this.chatId,
+        fs.createReadStream(ML_LOGO_PATH),
+        { caption: msg, parse_mode: 'Markdown' }
+      );
     } catch (err) {
       logger.error('Foto cupom falhou:', err.message);
-      await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'Markdown' }).catch(e => logger.error('Mensagem cupom:', e.message));
-    }
-  }
-
-  async sendCouponExpiredMessage(coupon) {
-    const msg = `❌ *Cupom encerrado*\n\n🏷 \`${coupon.code}\`\nFique atento para os próximos cupons!\n\n🔗 https://www.mercadolivre.com.br/cupons`;
-    try {
-      await this.bot.sendPhoto(this.chatId, fs.createReadStream(ML_LOGO_PATH), { caption: msg, parse_mode: 'Markdown' });
-    } catch {
-      await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'Markdown' }).catch(() => {});
+      await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'Markdown' })
+        .catch(e => logger.error('Mensagem cupom:', e.message));
     }
   }
 }
