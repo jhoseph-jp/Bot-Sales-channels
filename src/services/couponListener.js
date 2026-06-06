@@ -121,12 +121,13 @@ class CouponListener {
 
       for (const post of posts) {
         if (!isMlRelated(post.text)) continue;
+        if (/encerrado|expirado|vencido/i.test(post.text)) continue;
 
         const codes = extractCodes(post.text);
         if (codes.length === 0) continue;
 
         const discount = extractDiscount(post.text);
-        const link = extractMlLink(post.text) || 'https://www.mercadolivre.com.br/cupons';
+        const link = extractMlLink(post.text);
 
         for (const code of codes) {
           const id = require('crypto').createHash('md5').update(code).digest('hex').substring(0, 16);
@@ -196,7 +197,7 @@ class CouponListener {
           code: c.code,
           description: c.text,
           discountText: extractDiscount(c.text) || c.text.substring(0, 100),
-          link: c.link || 'https://www.mercadolivre.com.br/cupons',
+          link: c.link || null,
           category: '',
           isActive: true,
           source: 'ml-homepage',

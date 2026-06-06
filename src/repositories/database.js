@@ -117,10 +117,10 @@ class Database {
 
   async saveOffer(offer) {
     const sql = `
-      INSERT INTO offers (id, title, price, discount, link, original_link, image, coupon, category)
+      INSERT OR IGNORE INTO offers (id, title, price, discount, link, original_link, image, coupon, category)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    return this.run(sql, [
+    const result = await this.run(sql, [
       offer.id,
       offer.title,
       offer.price,
@@ -131,6 +131,7 @@ class Database {
       offer.coupon || null,
       offer.category || null,
     ]);
+    return result.changes > 0;
   }
 
   // ─────────────────────────────────────────────
@@ -197,6 +198,10 @@ class Database {
       `UPDATE coupons SET is_active = ?, last_checked = CURRENT_TIMESTAMP WHERE id = ?`,
       [isActive ? 1 : 0, id]
     );
+  }
+
+  async deactivateAllCoupons() {
+    return this.run(`UPDATE coupons SET is_active = 0`);
   }
 }
 

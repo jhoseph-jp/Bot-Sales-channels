@@ -371,6 +371,7 @@ class MercadoLivreService {
 
   _processRawOffers(rawOffers, target) {
     const offers = [];
+    const seenUrls = new Set();
     for (const raw of rawOffers) {
       const currentPrice  = PriceCalculator.parsePrice(raw.currentFraction, raw.currentCents);
       if (currentPrice <= 0) continue;
@@ -380,9 +381,11 @@ class MercadoLivreService {
         : PriceCalculator.extractDiscountFromBadge(raw.discountBadge);
       if (discount < settings.minDiscount) continue;
       if (!isFeminine(raw.title, raw._fromFeminineCategory)) continue;
+      const cleanLink = raw.link.split('?')[0];
+      if (seenUrls.has(cleanLink)) continue;
+      seenUrls.add(cleanLink);
       const { emoji, label } = getCategoryInfo(raw.title);
       const coupon   = CouponValidator.shouldIncludeCoupon(raw.couponText) ? CouponValidator.formatCoupon(raw.couponText) : '';
-      const cleanLink = raw.link.split('?')[0];
       const id = crypto.createHash('md5').update(`${raw.title}-${currentPrice}`).digest('hex');
       offers.push({ id, title: raw.title, price: currentPrice, originalPrice: originalPrice > 0 ? originalPrice : currentPrice, discount, link: cleanLink, image: raw.image, coupon, category: label, emoji, isFlash: target.isFlash });
     }

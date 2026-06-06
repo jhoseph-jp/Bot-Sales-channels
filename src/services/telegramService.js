@@ -87,12 +87,12 @@ class TelegramService {
     }
 
     const discount = coupon.discountText || '';
-    const link     = coupon.link || 'https://www.mercadolivre.com.br/cupons';
+    const link     = coupon.link || null;
 
     let msg = `🔥 *Novo Cupom Mercado Livre!*\n\n`;
     if (discount) msg += `➖ ${discount}\n`;
-    msg += `🎯 Usem o cupom: \`${coupon.code}\`\n\n`;
-    msg += `🔗 ${link}`;
+    msg += `🎯 Usem o cupom: \`${coupon.code}\``;
+    if (link) msg += `\n\n🔗 ${link}`;
 
     try {
       await this.bot.sendPhoto(

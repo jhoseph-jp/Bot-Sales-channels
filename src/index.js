@@ -114,7 +114,8 @@ class BotApp {
       offer.originalLink = originalLink;
       offer.link = meluUrl;
 
-      await db.saveOffer(offer);
+      const saved = await db.saveOffer(offer);
+      if (!saved) continue;
       await telegramService.enqueueOffer(offer);
       sent++;
 
@@ -134,6 +135,9 @@ class BotApp {
     if (!this.isRunning) return;
     try {
       logger.info('[Cupons] Verificando fontes de cupons...');
+
+      // Desativa todos antes de escanear — cupons não encontrados ficam inativos
+      await db.deactivateAllCoupons();
 
       // Agrega cupons das duas fontes (dedup interno por código)
       const allCoupons = await couponListener.scanAll(couponChannels);
