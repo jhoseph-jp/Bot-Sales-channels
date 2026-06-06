@@ -67,7 +67,9 @@ function extractDiscount(text) {
 }
 
 function extractMlLink(text) {
-  const m = text.match(/https?:\/\/(?:www\.)?(?:mercadolivre\.com(?:\.br)?\/sec|meli\.la)\/[A-Za-z0-9]+/i);
+  // Aceita APENAS links oficiais de campanha ML (mercadolivre.com/sec/XXXXX)
+  // NUNCA usa meli.la — esses são links afiliados de outros canais
+  const m = text.match(/https?:\/\/(?:www\.)?mercadolivre\.com(?:\.br)?\/sec\/[A-Za-z0-9]+/i);
   return m ? m[0] : null;
 }
 
