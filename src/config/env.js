@@ -21,7 +21,7 @@ const envSchema = Joi.object({
   ML_CLIENT_SECRET: Joi.string().required(),
   ML_ACCESS_TOKEN: Joi.string().allow(''),
   ML_REFRESH_TOKEN: Joi.string().required(),
-  ML_AFFILIATE_ID: Joi.string().default('JHOSEPHPEREIRADASILVA'),
+  ML_AFFILIATE_ID: Joi.string().default('jppromo'),
   ML_EMAIL: Joi.string().email().allow(''),
   ML_PASSWORD: Joi.string().allow(''),
   REDIS_HOST: Joi.string().default('127.0.0.1').allow(''),
