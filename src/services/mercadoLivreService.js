@@ -386,7 +386,9 @@ class MercadoLivreService {
       seenUrls.add(cleanLink);
       const { emoji, label } = getCategoryInfo(raw.title);
       const coupon   = CouponValidator.shouldIncludeCoupon(raw.couponText) ? CouponValidator.formatCoupon(raw.couponText) : '';
-      const id = crypto.createHash('md5').update(`${raw.title}-${currentPrice}`).digest('hex');
+      // MLB ID é o identificador estável do produto — não muda com preço ou URL
+      const mlbMatch = cleanLink.match(/MLB\d+/i);
+      const id = mlbMatch ? mlbMatch[0].toUpperCase() : crypto.createHash('md5').update(`${raw.title}-${currentPrice}`).digest('hex');
       offers.push({ id, title: raw.title, price: currentPrice, originalPrice: originalPrice > 0 ? originalPrice : currentPrice, discount, link: cleanLink, image: raw.image, coupon, category: label, emoji, isFlash: target.isFlash });
     }
     return offers;
