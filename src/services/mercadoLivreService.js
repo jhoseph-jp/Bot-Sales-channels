@@ -505,6 +505,60 @@ class MercadoLivreService {
   }
 
   // ─────────────────────────────────────────────
+  // Verificação de gênero na página do produto
+  // ─────────────────────────────────────────────
+
+  async checkProductIsMasculine(productUrl) {
+    try { await this._ensureBrowser(); } catch { return false; }
+    const page = await this._context.newPage();
+    try {
+      await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      await page.waitForTimeout(1500);
+
+      return await page.evaluate(() => {
+        const MASC = ['masculino', 'masculina', 'para homem', 'homem adulto', 'menino', ' male '];
+
+        function hasMasc(text) {
+          const t = (text || '').toLowerCase();
+          return MASC.some(m => t.includes(m));
+        }
+
+        // 1. Tabela de especificações técnicas — campo Gênero / Sexo
+        const specRows = document.querySelectorAll(
+          'tr.andes-table__row, .ui-pdp-specs__item, [class*="specs"] tr, [class*="attribute-row"]'
+        );
+        for (const row of specRows) {
+          const header = (row.querySelector('th, .andes-table__header, [class*="label"]')?.textContent || '').toLowerCase();
+          if (!header.includes('gênero') && !header.includes('genero') && !header.includes('sexo')) continue;
+          const value = (row.querySelector('td, .andes-table__column, [class*="value"]')?.textContent || '');
+          if (hasMasc(value)) return true;
+          // Se gênero está explicitamente feminino/unissex, não é masculino
+          return false;
+        }
+
+        // 2. Fallback: texto completo da tabela de atributos com padrão "Gênero: Masculino"
+        const specsBlock = document.querySelector('[class*="specs"], [class*="technical"], [class*="attributes"]');
+        if (specsBlock && /g[eê]nero\s*[:\|]\s*masculin/i.test(specsBlock.textContent)) return true;
+
+        // 3. Breadcrumb da categoria
+        const breadcrumb = document.querySelector('[class*="breadcrumb"], nav[aria-label*="breadcrumb"]');
+        if (breadcrumb && hasMasc(breadcrumb.textContent)) return true;
+
+        // 4. Título completo na página do produto
+        const title = document.querySelector('h1[class*="title"], .ui-pdp-title, h1');
+        if (title && hasMasc(title.textContent)) return true;
+
+        return false;
+      });
+    } catch (err) {
+      logger.debug(`Verificação de gênero falhou (${productUrl.substring(0, 60)}): ${err.message}`);
+      return false;
+    } finally {
+      await page.close().catch(() => {});
+    }
+  }
+
+  // ─────────────────────────────────────────────
   // Cupons — só códigos reais
   // ─────────────────────────────────────────────
 

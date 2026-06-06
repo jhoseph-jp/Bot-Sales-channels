@@ -77,13 +77,23 @@ class BotApp {
 
     if (newOffers.length === 0) return 0;
 
-    const topOffers = newOffers
+    // Pega até 3x o limite para compensar descartes por gênero
+    const candidates = newOffers
       .sort((a, b) => b.discount - a.discount)
-      .slice(0, maxPerCycle);
+      .slice(0, maxPerCycle * 3);
 
     let sent = 0;
 
-    for (const offer of topOffers) {
+    for (const offer of candidates) {
+      if (sent >= maxPerCycle) break;
+
+      // Verifica gênero na página do produto — descarta masculinos
+      const isMasculine = await mlService.checkProductIsMasculine(offer.link);
+      if (isMasculine) {
+        logger.info(`Descartado (masculino): ${offer.title.substring(0, 60)}`);
+        continue;
+      }
+
       if (fetchTimer) {
         offer.timer = await mlService.getFlashTimer(offer.link).catch(() => null);
       }
