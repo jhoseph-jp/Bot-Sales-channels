@@ -7,8 +7,8 @@ const telegramService = require('./services/telegramService');
 const OFFER_INTERVAL_MS  = 1800000;  // 30 min — ofertas do dia
 const FLASH_INTERVAL_MS  =  600000;  // 10 min — relâmpago
 
-const MAX_OFFERS_PER_CYCLE = 5;      // máx por ciclo diário
-const MAX_FLASH_PER_CYCLE  = 3;      // máx por ciclo relâmpago
+const MAX_OFFERS_PER_CYCLE = 8;      // máx por ciclo diário
+const MAX_FLASH_PER_CYCLE  = 5;      // máx por ciclo relâmpago
 
 class BotApp {
   constructor() {
@@ -23,7 +23,7 @@ class BotApp {
       this.runOfferCycle();
       this.runFlashCycle();
 
-      logger.info(`Bot iniciado. Ofertas: 30 min (max ${MAX_OFFERS_PER_CYCLE}) | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE})`);
+      logger.info(`Bot iniciado. Ofertas: 30 min (max ${MAX_OFFERS_PER_CYCLE}) | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE}) | Categorias: ${['moda','calçados','beleza','esportes','acessórios','joias'].join(', ')}`);
     } catch (err) {
       logger.error('Erro fatal ao iniciar:', err.message);
       process.exit(1);

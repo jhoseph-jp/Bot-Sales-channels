@@ -17,7 +17,10 @@ const ML_LOGO = 'https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui
 // Targets de scraping
 // ─────────────────────────────────────────────
 
-const FEMININE_CATEGORY_TABS = ['moda', 'calçados', 'calcados', 'beleza'];
+const FEMININE_CATEGORY_TABS = [
+  'moda', 'calçados', 'calcados', 'beleza',
+  'esportes', 'acessórios', 'acessorios', 'joias', 'bijuteria',
+];
 
 const OFFER_TARGET = {
   url: 'https://www.mercadolivre.com.br/ofertas',
@@ -430,7 +433,7 @@ class MercadoLivreService {
 
         if (categoryLinks.length > 0) {
           const allRaw = [];
-          for (const link of categoryLinks.slice(0, 5)) {
+          for (const link of categoryLinks.slice(0, 8)) {
             try {
               await page.goto(link.href, { waitUntil: 'domcontentloaded', timeout: 20000 });
               await page.waitForSelector('.poly-card', { timeout: 10000 }).catch(() => {});
