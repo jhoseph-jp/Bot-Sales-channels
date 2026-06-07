@@ -3,9 +3,11 @@ const logger = require('./utils/logger');
 const db = require('./repositories/database');
 const mlService = require('./services/mercadoLivreService');
 const telegramService = require('./services/telegramService');
+const couponListener = require('./services/couponListener');
 
 const OFFER_INTERVAL_MS  = 1800000;  // 30 min — ofertas do dia
 const FLASH_INTERVAL_MS  =  600000;  // 10 min — relâmpago
+const COUPON_INTERVAL_MS = 3600000;  // 60 min — cupons de canais Telegram
 
 const MAX_OFFERS_PER_CYCLE = 8;      // máx por ciclo diário
 const MAX_FLASH_PER_CYCLE  = 5;      // máx por ciclo relâmpago
@@ -22,8 +24,9 @@ class BotApp {
 
       this.runOfferCycle();
       this.runFlashCycle();
+      this.runCouponCycle();
 
-      logger.info(`Bot iniciado. Ofertas: 30 min (max ${MAX_OFFERS_PER_CYCLE}) | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE}) | Categorias: ${['moda','calçados','beleza','esportes','acessórios','joias'].join(', ')}`);
+      logger.info(`Bot iniciado. Ofertas: 30 min (max ${MAX_OFFERS_PER_CYCLE}) | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE}) | Cupons: 60 min | Categorias: ${['moda','calçados','beleza','esportes','acessórios','joias'].join(', ')}`);
     } catch (err) {
       logger.error('Erro fatal ao iniciar:', err.message);
       process.exit(1);
@@ -61,6 +64,30 @@ class BotApp {
       logger.error('[Relâmpago] Erro:', err.message);
     } finally {
       setTimeout(() => this.runFlashCycle(), FLASH_INTERVAL_MS);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Ciclo Cupons — 60 min, via canais Telegram
+  // ─────────────────────────────────────────────
+
+  async runCouponCycle() {
+    if (!this.isRunning) return;
+    try {
+      const coupons = await couponListener.getCoupons();
+      let sent = 0;
+      for (const coupon of coupons) {
+        if (await db.isCouponProcessed(coupon.id)) continue;
+        await db.saveCoupon({ ...coupon, discountText: '', isActive: true });
+        telegramService.enqueueCoupon(coupon);
+        sent++;
+        logger.info(`Novo cupom: ${coupon.code} (canal: ${coupon.channel})`);
+      }
+      logger.info(`[Cupons] ${sent} novo(s) enviado(s).`);
+    } catch (err) {
+      logger.error('[Cupons] Erro:', err.message);
+    } finally {
+      setTimeout(() => this.runCouponCycle(), COUPON_INTERVAL_MS);
     }
   }
 
