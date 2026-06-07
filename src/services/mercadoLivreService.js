@@ -60,9 +60,11 @@ const HARD_EXCLUSIONS = [
   // ── Industrial / agrícola ──
   'industrial', 'agrícola', 'trator', 'motor elétrico', 'bomba d\'água',
   'compressor', 'parafuso industrial', 'gerador',
-  // ── Automóvel ──
+  // ── Automóvel / limpeza automotiva ──
   'pneu', 'amortecedor', 'óleo motor', 'filtro de ar automotivo', 'para-choque',
   'alternador', 'vela de ignição',
+  'lavagem de carro', 'lavagem automotiva', 'lavagem caminhão', 'lavagem ônibus',
+  'shampoo automotivo', 'cera automotiva', 'desengraxante', 'pretinho automotivo',
   // ── Veterinário / pet ──
   'veterinário', 'veterinária', 'para cão', 'para gato', 'ração',
   'antipulgas', 'coleira antipulgas',
@@ -519,10 +521,16 @@ class MercadoLivreService {
 
       return await page.evaluate(() => {
         const MASC = ['masculino', 'masculina', 'para homem', 'homem adulto', 'menino', ' male '];
+        const FEM  = ['feminino', 'feminina', 'para mulher', 'mulher', 'senhora'];
 
         function hasMasc(text) {
           const t = (text || '').toLowerCase();
           return MASC.some(m => t.includes(m));
+        }
+
+        function hasFem(text) {
+          const t = (text || '').toLowerCase();
+          return FEM.some(f => t.includes(f));
         }
 
         // 1. Tabela de especificações técnicas — campo Gênero / Sexo
@@ -533,22 +541,34 @@ class MercadoLivreService {
           const header = (row.querySelector('th, .andes-table__header, [class*="label"]')?.textContent || '').toLowerCase();
           if (!header.includes('gênero') && !header.includes('genero') && !header.includes('sexo')) continue;
           const value = (row.querySelector('td, .andes-table__column, [class*="value"]')?.textContent || '');
+          // Unissex: campo contém ambos → não bloquear
+          if (hasMasc(value) && hasFem(value)) return false;
           if (hasMasc(value)) return true;
-          // Se gênero está explicitamente feminino/unissex, não é masculino
+          // Feminino/unissex explícito → não é masculino
           return false;
         }
 
         // 2. Fallback: texto completo da tabela de atributos com padrão "Gênero: Masculino"
+        // Só bloqueia se masculino aparecer sem feminino/unissex no mesmo bloco
         const specsBlock = document.querySelector('[class*="specs"], [class*="technical"], [class*="attributes"]');
-        if (specsBlock && /g[eê]nero\s*[:\|]\s*masculin/i.test(specsBlock.textContent)) return true;
+        if (specsBlock) {
+          const st = specsBlock.textContent;
+          if (/g[eê]nero\s*[:\|]\s*masculin/i.test(st) && !/g[eê]nero\s*[:\|]\s*(feminin|unissex)/i.test(st)) return true;
+        }
 
-        // 3. Breadcrumb da categoria
+        // 3. Breadcrumb — só bloqueia se masculino sem nenhum indicador feminino
         const breadcrumb = document.querySelector('[class*="breadcrumb"], nav[aria-label*="breadcrumb"]');
-        if (breadcrumb && hasMasc(breadcrumb.textContent)) return true;
+        if (breadcrumb) {
+          const bc = breadcrumb.textContent;
+          if (hasMasc(bc) && !hasFem(bc)) return true;
+        }
 
         // 4. Título completo na página do produto
         const title = document.querySelector('h1[class*="title"], .ui-pdp-title, h1');
-        if (title && hasMasc(title.textContent)) return true;
+        if (title) {
+          const t = title.textContent;
+          if (hasMasc(t) && !hasFem(t)) return true;
+        }
 
         return false;
       });
