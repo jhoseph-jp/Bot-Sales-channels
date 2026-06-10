@@ -18,8 +18,7 @@ const ML_LOGO = 'https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui
 // ─────────────────────────────────────────────
 
 const FEMININE_CATEGORY_TABS = [
-  'moda', 'calçados', 'calcados', 'beleza',
-  'esportes', 'acessórios', 'acessorios', 'joias', 'bijuteria',
+  'moda', 'calçados', 'calcados', 'beleza', 'joias', 'bijuteria', 'cozinha',
 ];
 
 const OFFER_TARGET = {
@@ -78,6 +77,15 @@ const HARD_EXCLUSIONS = [
   // ── Ferramentas / informática ──
   'furadeira', 'parafusadeira', 'esmerilhadeira', 'serra elétrica',
   'teclado gamer', 'mouse gamer', 'placa de vídeo', 'processador', 'memória ram',
+  // ── Outdoor / camping / esporte masculino ──
+  'barraca de camping', 'barraca camping', 'saco de dormir', 'fogareiro',
+  'lanterna', 'canivete', 'machado', 'bússola', 'cantil de alumínio',
+  'colchonete camping', 'kit camping', 'equipamento de pesca', 'vara de pesca',
+  'isca de pesca', 'molinete de pesca',
+  // ── Elétrica / hidráulica ──
+  'disjuntor', 'cabo elétrico', 'mangueira', 'registro hidráulico', 'torneira',
+  // ── Automotivo adicional ──
+  'kit suspensão', 'embreagem', 'radiador automotivo', 'bateria automotiva',
 ];
 
 // Nicho 1 — Roupas (máxima prioridade)
@@ -86,16 +94,24 @@ const CLOTHES_KEYWORDS = [
   // Itens inequivocamente femininos
   'vestido', 'saia', 'sutiã', 'calcinha', 'lingerie', 'camisola', 'biquíni', 'maiô',
   'legging', 'cropped', 'body feminino',
+  // Roupa íntima e modeladores
+  'kit calcinha', 'kit lingerie', 'conjunto lingerie', 'baby doll',
+  'soutien', 'meia-calça', 'meia calça', 'meia arrastão', 'meia fina feminina',
+  'cinta modeladora', 'modelador feminino', 'short modelador',
+  'calça modeladora', 'body modelador',
   'macacão feminino', 'conjunto feminino', 'moletom feminino',
   'short feminino', 'camiseta feminina', 'regata feminina',
   'jaqueta feminina', 'casaco feminino', 'pijama feminino',
   // Standalone — seguro porque HARD_EXCLUSIONS bloqueia "masculin*"
   'blusa',        // blusa manga, blusa estampada, blusa de crochê...
   'camiseta ',    // camiseta (espaço evita "camisetão")
-  // Estilos de calça predominantemente femininos
+  'conjuntinho',  // termo muito feminino no mercado BR
+  // Calças femininas
   'calça mom', 'calça flare', 'calça palazzo', 'calça wide leg',
   'calça skinny feminina', 'calça clochard', 'calça jogger feminina',
-  'calça social feminina', 'calça jeans feminina',
+  'calça social feminina', 'calça jeans feminina', 'calça legging',
+  // Camisas e blusas femininas
+  'camisa feminina', 'camisa social feminina', 'camisa cropped',
   // Acessórios de roupa
   'kimono feminino', 'cardigan feminino', 'blazer feminino', 'colete feminino',
 ];
@@ -116,10 +132,25 @@ const BEAUTY_KEYWORDS = [
   'iluminador', 'contorno facial', 'base de maquiagem', 'gloss labial',
   'lápis labial', 'primer maquiagem', 'corretivo maquiagem',
   'perfume feminino', 'colônia feminina', 'eau de parfum', 'body splash feminino',
+  // Cabelo
   'shampoo', 'condicionador', 'máscara capilar', 'sérum capilar',
+  'óleo capilar', 'leave-in', 'ampola capilar', 'ampola de tratamento',
+  'creme de pentear', 'finalizador capilar', 'spray capilar',
+  'kit cabelo', 'tratamento capilar',
+  // Skincare / rosto
   'sérum facial', 'hidratante facial', 'protetor solar facial', 'skincare',
   'retinol', 'vitamina c facial', 'niacinamida', 'ácido hialurônico',
   'tônico facial', 'esfoliante facial', 'máscara facial',
+  'água micelar', 'demaquilante', 'sabonete facial', 'gel de limpeza facial',
+  'protetor solar', 'bb cream', 'cc cream', 'kit skincare',
+  // Corpo
+  'loção corporal', 'creme corporal', 'hidratante corporal',
+  'esfoliante corporal', 'creme para mãos', 'manteiga corporal',
+  'autobronzeador', 'óleo corporal',
+  // Maquiagem adicional
+  'pó compacto', 'pó translúcido', 'paleta de cores', 'kit maquiagem',
+  'sombra para olhos', 'blush em pó',
+  // Unhas
   'esmalte', 'gel de unhas', 'nail art',
 ];
 
@@ -129,7 +160,30 @@ const HAIR_ELECTRONICS = [
   'modelador de cachos', 'ondulador de cabelo', 'difusor para cabelo', 'secador de cabelo',
 ];
 
-// Nicho 5 — Unisex liberados
+// Nicho 5 — Cozinha e utilidades domésticas
+const KITCHEN_KEYWORDS = [
+  // Panelas e recipientes
+  'panela', 'frigideira', 'wok', 'caçarola', 'assadeira', 'forma de bolo',
+  'cuscuzeira', 'chaleira', 'bule', 'jogo de panelas', 'kit panelas',
+  // Eletrodomésticos de cozinha
+  'airfryer', 'air fryer', 'fritadeira elétrica', 'panela elétrica',
+  'panela de pressão elétrica', 'liquidificador', 'mixer de mão',
+  'processador de alimentos', 'batedeira', 'sanduicheira', 'grill elétrico',
+  'cafeteira', 'máquina de café', 'torradeira',
+  // Utensílios
+  'escorredor de massa', 'tábua de corte', 'faqueiro', 'conjunto de facas',
+  'kit cozinha', 'utensílios de cozinha', 'espátula de cozinha', 'concha de cozinha',
+  'jogo de talheres', 'porta tempero', 'porta-tempero',
+  // Louças e copos
+  'jogo de xícaras', 'jogo americano', 'porta-copo', 'garrafa térmica',
+  'marmita', 'pote hermético', 'conjunto de potes', 'tigela de cozinha',
+  'saladeira', 'fruteira',
+  // Organização de cozinha
+  'organizador de cozinha', 'suporte para panela', 'escorredor de louça',
+  'lixeira de cozinha',
+];
+
+// Nicho 6 — Unisex liberados
 const UNISEX_ALLOWED = [
   'toalha', 'lençol', 'edredom', 'fronha', 'jogo de cama', 'colcha', 'cobertor',
   'porta-jóias', 'organizador de guarda-roupa', 'espelho camarim',
@@ -169,7 +223,10 @@ function isFeminine(title, fromFeminineCategory = false) {
   if (BEAUTY_KEYWORDS.some(kw => t.includes(normalize(kw)))) return true;
   if (HAIR_ELECTRONICS.some(kw => t.includes(normalize(kw)))) return true;
 
-  // Nicho 5: unisex
+  // Nicho 5: cozinha
+  if (KITCHEN_KEYWORDS.some(kw => t.includes(normalize(kw)))) return true;
+
+  // Nicho 6: unisex
   if (UNISEX_ALLOWED.some(kw => t.includes(normalize(kw)))) return true;
 
   // Ambíguas com qualificador
@@ -201,6 +258,8 @@ function getCategoryInfo(title) {
     return { emoji: '🧴', label: 'Cabelo' };
   if (CLOTHES_KEYWORDS.some(kw => t.includes(kw.toLowerCase())))
     return { emoji: '👗', label: 'Moda' };
+  if (KITCHEN_KEYWORDS.some(kw => t.includes(kw.toLowerCase())))
+    return { emoji: '🍳', label: 'Cozinha' };
   if (/toalha|lençol|edredom|colcha/.test(t))
     return { emoji: '🏠', label: 'Casa' };
   return { emoji: '✨', label: 'Feminino' };
@@ -329,14 +388,15 @@ class MercadoLivreService {
           ).trim();
           if (!title) return;
 
-          // Link
+          // Link — ignora links de acessibilidade/feedback do ML
+          const isProductLink = (href) => href && href.includes('mercadolivre.com') && !href.includes('acessibilidade') && !href.includes('/feedback') && !href.includes('ajuda.mercadolivre');
           const link = (
             card.querySelector('a.poly-component__title')?.href ||
             card.querySelector('a.ui-search-item__title-label')?.href ||
-            card.querySelector('a')?.href ||
+            Array.from(card.querySelectorAll('a')).map(a => a.href).find(isProductLink) ||
             ''
           );
-          if (!link || !link.includes('mercadolivre.com')) return;
+          if (!isProductLink(link)) return;
 
           // Preço atual
           const priceEl = card.querySelector('.poly-price__current') || card.querySelector('.ui-search-price__second-line') || card;

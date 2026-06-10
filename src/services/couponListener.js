@@ -25,6 +25,46 @@ function isMlRelated(text) {
   return /mercado\s*livre|mercadolivre|meli\.la|\.meli\.|mlb|\bml\b/i.test(text);
 }
 
+function extractDiscount(text) {
+  // "10% off" / "10% de desconto" / "10%off"
+  const afterPct = text.match(/(\d+)\s*%\s*(?:off|de desconto|desconto)/i);
+  if (afterPct) return parseInt(afterPct[1], 10);
+
+  // "desconto de 10%" / "até 10%"
+  const beforePct = text.match(/(?:desconto|até)\s+(?:de\s+)?(\d+)\s*%/i);
+  if (beforePct) return parseInt(beforePct[1], 10);
+
+  // qualquer "X%" com sanidade
+  const any = text.match(/(\d+)\s*%/);
+  if (any) {
+    const val = parseInt(any[1], 10);
+    if (val >= 5 && val <= 90) return val;
+  }
+
+  return null;
+}
+
+function extractMinimum(text) {
+  // "acima de R$49" / "acima de R$ 49,00" / "mínimo de R$49" / "compras acima de R$49"
+  const m = text.match(/(?:acima|m[ií]nimo)\s+de\s+R\$\s*([\d.,]+)/i);
+  if (m) return `R$${m[1].replace('.', ',')}`;
+  // "em compras de R$49"
+  const m2 = text.match(/compras\s+(?:de|acima\s+de)\s+R\$\s*([\d.,]+)/i);
+  if (m2) return `R$${m2[1].replace('.', ',')}`;
+  return null;
+}
+
+function extractLimit(text) {
+  // "Limite de 100" / "limite: 100" / "primeiros 100 usos" / "100 usos"
+  const m = text.match(/limite\s*(?:de|:)\s*(\d+)/i);
+  if (m) return parseInt(m[1], 10);
+  const m2 = text.match(/primeiros\s+(\d+)/i);
+  if (m2) return parseInt(m2[1], 10);
+  const m3 = text.match(/(\d+)\s+usos/i);
+  if (m3) return parseInt(m3[1], 10);
+  return null;
+}
+
 function extractCode(text) {
   // Prioridade 1: padrão explícito "cupom: CODE" ou "código: CODE"
   const explicit = text.match(/(?:cupom|c[oó]digo|code|promo)\s*[:\-\s]+([A-Z0-9]{4,20})/i);
@@ -98,7 +138,10 @@ class CouponListener {
         if (!code) continue;
 
         const id = crypto.createHash('md5').update(code).digest('hex').substring(0, 16);
-        found.push({ id, code, description: msg.substring(0, 250), channel: channelName });
+        const discount = extractDiscount(msg);
+        const minimum = extractMinimum(msg);
+        const limit = extractLimit(msg);
+        found.push({ id, code, description: msg.substring(0, 250), channel: channelName, discount, minimum, limit });
       }
     } finally {
       await page.close().catch(() => {});

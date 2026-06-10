@@ -81,11 +81,14 @@ class TelegramService {
   // ─────────────────────────────────────────────
 
   async sendCouponMessage(coupon) {
-    const msg =
-      `🏷️ *CUPOM MERCADO LIVRE*\n\n` +
-      `📋 Código: \`${coupon.code}\`\n\n` +
-      `✅ Copie o código e aplique no checkout!\n\n` +
-      `🛒 mercadolivre.com.br`;
+    let msg = `🏷️ *CUPOM MERCADO LIVRE*\n\n`;
+    msg += `📋 Código: \`${coupon.code}\`\n`;
+    if (coupon.discount) msg += `📉 *${coupon.discount}% OFF*`;
+    if (coupon.minimum) msg += ` em compras acima de *${coupon.minimum}*`;
+    if (coupon.discount || coupon.minimum) msg += `\n`;
+    if (coupon.limit) msg += `⚠️ Limite de ${coupon.limit} usos\n`;
+    msg += `\n✅ Copie o código e aplique no checkout!\n\n`;
+    msg += `🛒 mercadolivre.com.br`;
 
     const photo = fs.existsSync(ML_LOGO_LOCAL)
       ? fs.createReadStream(ML_LOGO_LOCAL)

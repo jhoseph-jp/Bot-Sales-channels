@@ -1,9 +1,12 @@
+const { exec } = require('child_process');
 const { settings } = require('./config/env');
 const logger = require('./utils/logger');
 const db = require('./repositories/database');
 const mlService = require('./services/mercadoLivreService');
 const telegramService = require('./services/telegramService');
 const couponListener = require('./services/couponListener');
+
+const WEBSITE_SYNC_CMD = 'scp -o StrictHostKeyChecking=no -i /home/ubuntu/.ssh/sync_key /home/ubuntu/Bot-Sales-channels/data/bot.sqlite ubuntu@18.216.121.64:/home/ubuntu/jppromo-website/data/bot.sqlite';
 
 const OFFER_INTERVAL_MS  = 1800000;  // 30 min — ofertas do dia
 const FLASH_INTERVAL_MS  =  600000;  // 10 min — relâmpago
@@ -43,6 +46,7 @@ class BotApp {
       const offers = await mlService.getDailyOffers();
       const sent = await this._processOffers(offers, MAX_OFFERS_PER_CYCLE, false);
       logger.info(`[Ofertas do Dia] ${sent} novas enviadas.`);
+      if (sent > 0) this._syncWebsite();
     } catch (err) {
       logger.error('[Ofertas do Dia] Erro:', err.message);
     } finally {
@@ -60,6 +64,7 @@ class BotApp {
       const offers = await mlService.getFlashOffers();
       const sent = await this._processOffers(offers, MAX_FLASH_PER_CYCLE, true);
       logger.info(`[Relâmpago] ${sent} novas enviadas.`);
+      if (sent > 0) this._syncWebsite();
     } catch (err) {
       logger.error('[Relâmpago] Erro:', err.message);
     } finally {
@@ -144,6 +149,13 @@ class BotApp {
     }
 
     return sent;
+  }
+
+  _syncWebsite() {
+    exec(WEBSITE_SYNC_CMD, (err) => {
+      if (err) logger.warn('[Sync] Falha ao sincronizar SQLite com website:', err.message);
+      else logger.info('[Sync] SQLite sincronizado com o website.');
+    });
   }
 
   stop() {
