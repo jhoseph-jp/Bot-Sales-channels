@@ -14,7 +14,7 @@ const axios = require('axios');
 async function getTokens(code) {
   const clientId     = process.env.ML_CLIENT_ID;
   const clientSecret = process.env.ML_CLIENT_SECRET;
-  const redirectUri  = process.env.ML_REDIRECT_URI || 'https://jpromos.com.br/auth/callback';
+  const redirectUri  = process.env.ML_REDIRECT_URI || 'https://ofertadelas.com.br/auth/callback';
 
   if (!clientId || !clientSecret) {
     console.error('Defina ML_CLIENT_ID e ML_CLIENT_SECRET no arquivo .env');

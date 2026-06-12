@@ -21,7 +21,7 @@ const envSchema = Joi.object({
   ML_CLIENT_SECRET: Joi.string().required(),
   ML_ACCESS_TOKEN: Joi.string().allow(''),
   ML_REFRESH_TOKEN: Joi.string().required(),
-  ML_AFFILIATE_ID: Joi.string().default('jppromo'),
+  ML_AFFILIATE_ID: Joi.string().default('ofertadelas'),
   ML_EMAIL: Joi.string().email().allow(''),
   ML_PASSWORD: Joi.string().allow(''),
   REDIS_HOST: Joi.string().default('127.0.0.1').allow(''),
@@ -63,7 +63,11 @@ module.exports = {
   },
   settings: {
     checkInterval: envVars.CHECK_INTERVAL_MS,
-    minDiscount: envVars.MIN_DISCOUNT
+    minDiscount: envVars.MIN_DISCOUNT,
+    instagram: {
+      userId: process.env.INSTAGRAM_USER_ID,
+      token:  process.env.INSTAGRAM_TOKEN,
+    },
   },
   logLevel: envVars.LOG_LEVEL,
   couponChannels: envVars.COUPON_CHANNELS.split(',').map(s => s.trim()).filter(Boolean),

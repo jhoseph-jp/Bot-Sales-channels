@@ -5,8 +5,9 @@ const db = require('./repositories/database');
 const mlService = require('./services/mercadoLivreService');
 const telegramService = require('./services/telegramService');
 const couponListener = require('./services/couponListener');
+const instagramService = require('./services/instagramService');
 
-const WEBSITE_SYNC_CMD = 'scp -o StrictHostKeyChecking=no -i /home/ubuntu/.ssh/sync_key /home/ubuntu/Bot-Sales-channels/data/bot.sqlite ubuntu@18.216.121.64:/home/ubuntu/jppromo-website/data/bot.sqlite';
+const WEBSITE_SYNC_CMD = 'scp -o StrictHostKeyChecking=no -i /home/ubuntu/.ssh/sync_key /home/ubuntu/Bot-Sales-channels/data/bot.sqlite ubuntu@18.189.200.12:/home/ubuntu/ofertadelas-website/data/bot.sqlite';
 
 const OFFER_INTERVAL_MS  = 1800000;  // 30 min — ofertas do dia
 const FLASH_INTERVAL_MS  =  600000;  // 10 min — relâmpago
@@ -79,14 +80,36 @@ class BotApp {
   async runCouponCycle() {
     if (!this.isRunning) return;
     try {
-      const coupons = await couponListener.getCoupons();
+      // Busca de duas fontes em paralelo: canais Telegram + página ML
+      const [listenerCoupons, mlCoupons] = await Promise.all([
+        couponListener.getCoupons().catch(() => []),
+        mlService.getCoupons().catch(() => []),
+      ]);
+
+      // Mapa código → discountText do ML (fonte mais confiável para %desconto)
+      const mlDiscountMap = new Map(mlCoupons.map(c => [c.code, c.discountText]));
+
+      // Merge: começa com cupons do listener + adiciona exclusivos do ML
+      const allCoupons = [...listenerCoupons];
+      for (const mc of mlCoupons) {
+        if (!allCoupons.some(c => c.code === mc.code)) {
+          allCoupons.push({ ...mc, discount: null, minimum: null, limit: null });
+        }
+      }
+
       let sent = 0;
-      for (const coupon of coupons) {
+      for (const coupon of allCoupons) {
         if (await db.isCouponProcessed(coupon.id)) continue;
-        await db.saveCoupon({ ...coupon, discountText: '', isActive: true });
+
+        // Enriquece com discountText do ML quando o listener não encontrou %
+        if (!coupon.discount && mlDiscountMap.has(coupon.code)) {
+          coupon.discountText = mlDiscountMap.get(coupon.code);
+        }
+
+        await db.saveCoupon({ ...coupon, discountText: coupon.discountText || '', isActive: true });
         telegramService.enqueueCoupon(coupon);
         sent++;
-        logger.info(`Novo cupom: ${coupon.code} (canal: ${coupon.channel})`);
+        logger.info(`Novo cupom: ${coupon.code}${coupon.discount ? ` (${coupon.discount}% OFF)` : coupon.discountText ? ` (${coupon.discountText})` : ''}`);
       }
       logger.info(`[Cupons] ${sent} novo(s) enviado(s).`);
     } catch (err) {
@@ -143,6 +166,7 @@ class BotApp {
       const saved = await db.saveOffer(offer);
       if (!saved) continue;
       await telegramService.enqueueOffer(offer);
+      instagramService.enqueueOffer(offer);   // Caminho A: espelha as melhores no Instagram
       sent++;
 
       logger.info(`Nova oferta: ${offer.discount}% OFF | ${offer.category} | ${offer.title.substring(0, 50)}`);

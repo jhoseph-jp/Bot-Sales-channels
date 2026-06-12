@@ -83,9 +83,13 @@ class TelegramService {
   async sendCouponMessage(coupon) {
     let msg = `🏷️ *CUPOM MERCADO LIVRE*\n\n`;
     msg += `📋 Código: \`${coupon.code}\`\n`;
-    if (coupon.discount) msg += `📉 *${coupon.discount}% OFF*`;
-    if (coupon.minimum) msg += ` em compras acima de *${coupon.minimum}*`;
-    if (coupon.discount || coupon.minimum) msg += `\n`;
+    if (coupon.discount) {
+      msg += `📉 *${coupon.discount}% OFF*`;
+      if (coupon.minimum) msg += ` em compras acima de *${coupon.minimum}*`;
+      msg += `\n`;
+    } else if (coupon.discountText) {
+      msg += `📉 *${coupon.discountText}*\n`;
+    }
     if (coupon.limit) msg += `⚠️ Limite de ${coupon.limit} usos\n`;
     msg += `\n✅ Copie o código e aplique no checkout!\n\n`;
     msg += `🛒 mercadolivre.com.br`;

@@ -21,7 +21,7 @@ const SCREENSHOT_DIR   = path.resolve(process.cwd(), 'logs');
 const UTM_FALLBACK = {
   utm_source   : 'telegram',
   utm_medium   : 'bot',
-  utm_campaign : 'jpromos_ofertas',
+  utm_campaign : 'ofertadelas_ofertas',
 };
 
 class AffiliateAutomation {
