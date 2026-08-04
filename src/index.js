@@ -6,6 +6,7 @@ const mlService = require('./services/mercadoLivreService');
 const telegramService = require('./services/telegramService');
 const couponListener = require('./services/couponListener');
 const cuponomiaScraper = require('./services/cuponomiaScraper');
+const { isRelevantForAudience } = require('./utils/couponAudience');
 const instagramService = require('./services/instagramService');
 const whatsappService = require('./services/whatsappService');
 
@@ -106,6 +107,7 @@ class BotApp {
       }
 
       const newCoupons = [];
+      let filtered = 0;
       for (const coupon of allCoupons) {
         if (await db.isCouponProcessed(coupon.id)) continue;
 
@@ -114,10 +116,19 @@ class BotApp {
           coupon.discountText = mlDiscountMap.get(coupon.code);
         }
 
+        // Fora do público-alvo (veículos, construção, pet, infantil...) — salva como
+        // inativo só pra não reprocessar, mas não entra na mensagem nem vira cupom ativo.
+        if (!isRelevantForAudience(coupon)) {
+          await db.saveCoupon({ ...coupon, discountText: coupon.discountText || '', isActive: false });
+          filtered++;
+          continue;
+        }
+
         await db.saveCoupon({ ...coupon, discountText: coupon.discountText || '', isActive: true });
         newCoupons.push(coupon);
         logger.info(`Novo cupom: ${coupon.code}${coupon.discount ? ` (${coupon.discount}% OFF)` : coupon.discountText ? ` (${coupon.discountText})` : ''}`);
       }
+      if (filtered > 0) logger.info(`[Cupons] ${filtered} filtrado(s) (fora do público-alvo).`);
 
       if (newCoupons.length > 0) {
         const genericLink = await mlService.buildAffiliateLink('https://www.mercadolivre.com.br/ofertas')

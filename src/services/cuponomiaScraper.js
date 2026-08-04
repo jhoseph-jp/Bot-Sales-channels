@@ -58,6 +58,7 @@ class CuponomiaScraper {
         found.push({
           id,
           code,
+          title: card.title,
           description: (card.desc || card.title).substring(0, 250),
           discount: extractDiscount(text),
           minimum: extractMinimum(text),
