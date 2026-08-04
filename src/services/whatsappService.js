@@ -81,7 +81,8 @@ class WhatsAppService {
     while (this.queue.length > 0 && this.isReady) {
       const { type, data } = this.queue.shift();
       try {
-        if (type === 'coupon') await this.sendCouponMessage(data);
+        if (type === 'couponBatch') await this.sendCouponBatchMessage(data.coupons, data.link);
+        else if (type === 'coupon') await this.sendCouponMessage(data);
         else await this.sendOfferMessage(data);
         await new Promise(r => setTimeout(r, 1500));
       } catch (error) {
@@ -100,6 +101,12 @@ class WhatsAppService {
   enqueueCoupon(coupon) {
     if (!this.groupId) return;
     this.queue.push({ type: 'coupon', data: coupon });
+    this.processQueue();
+  }
+
+  enqueueCouponBatch(coupons, link) {
+    if (!this.groupId) return;
+    this.queue.push({ type: 'couponBatch', data: { coupons, link } });
     this.processQueue();
   }
 
@@ -123,6 +130,7 @@ class WhatsAppService {
     msg += `📉 ${offer.discount}% OFF\n`;
 
     if (offer.timer) msg += `⏱ Termina em: ${offer.timer}\n`;
+    if (offer.activeCoupon) msg += `🎫 use o cupom *${offer.activeCoupon}*\n`;
 
     msg += `\n🔗 ${offer.link}`;
 
@@ -165,6 +173,76 @@ class WhatsAppService {
     } catch (err) {
       logger.debug(`[WA] Foto cupom falhou, enviando texto: ${err.message}`);
       await this.sock.sendMessage(this.groupId, { text: msg });
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Mensagem de Cupons (lote — agrupa por desconto/mínimo/teto)
+  // ─────────────────────────────────────────────
+
+  _groupCoupons(coupons) {
+    const groups = new Map();
+    for (const c of coupons) {
+      const key = `${c.discount || ''}|${c.minimum || ''}|${c.maxDiscount || ''}|${c.discountText || ''}`;
+      if (!groups.has(key)) groups.set(key, { ...c, codes: [] });
+      groups.get(key).codes.push(c.code);
+    }
+    return Array.from(groups.values());
+  }
+
+  _formatCouponGroup(g) {
+    let line = '';
+    if (g.discount) {
+      line += `➖ *${g.discount}% OFF*`;
+      if (g.minimum) line += ` em compras acima de ${g.minimum}`;
+      if (g.maxDiscount) line += `, limitado a ${g.maxDiscount}`;
+      line += `\n`;
+    } else if (g.discountText) {
+      line += `➖ *${g.discountText}*\n`;
+    } else {
+      line += `➖ *Cupom de desconto*\n`;
+    }
+    line += `🎯 Use o cupom: \`\`\`${g.codes.join('```, ```')}\`\`\`\n\n`;
+    return line;
+  }
+
+  // Divide os grupos em páginas pra não estourar o limite de legenda
+  _paginateCouponGroups(groups, link) {
+    const HEADER = `🔥 *Novo Cupom Mercado Livre!*\n\n`;
+    const FOOTER = `🔗 ${link}`;
+    const MAX_LEN = 950;
+
+    const pages = [];
+    let current = HEADER;
+    for (const g of groups) {
+      const line = this._formatCouponGroup(g);
+      if ((current + line + FOOTER).length > MAX_LEN && current !== HEADER) {
+        pages.push(current + FOOTER);
+        current = HEADER;
+      }
+      current += line;
+    }
+    pages.push(current + FOOTER);
+    return pages;
+  }
+
+  async sendCouponBatchMessage(coupons, link) {
+    if (!coupons || coupons.length === 0) return;
+    const groups = this._groupCoupons(coupons);
+    const pages = this._paginateCouponGroups(groups, link);
+
+    for (const msg of pages) {
+      const image = fs.existsSync(ML_LOGO_LOCAL)
+        ? { url: ML_LOGO_LOCAL }
+        : { url: ML_LOGO_URL };
+
+      try {
+        await this.sock.sendMessage(this.groupId, { image, caption: msg });
+      } catch (err) {
+        logger.debug(`[WA] Foto cupons (lote) falhou, enviando texto: ${err.message}`);
+        await this.sock.sendMessage(this.groupId, { text: msg });
+      }
+      if (pages.length > 1) await new Promise(r => setTimeout(r, 1500));
     }
   }
 }

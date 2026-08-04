@@ -28,7 +28,8 @@ class TelegramService {
     while (this.queue.length > 0) {
       const { type, data } = this.queue.shift();
       try {
-        if (type === 'coupon') await this.sendCouponMessage(data);
+        if (type === 'couponBatch') await this.sendCouponBatchMessage(data.coupons, data.link);
+        else if (type === 'coupon') await this.sendCouponMessage(data);
         else await this.sendOfferMessage(data);
         await new Promise(r => setTimeout(r, 1500));
       } catch (error) {
@@ -40,6 +41,7 @@ class TelegramService {
 
   enqueueOffer(offer) { this.queue.push({ type: 'offer', data: offer }); this.processQueue(); }
   enqueueCoupon(coupon) { this.queue.push({ type: 'coupon', data: coupon }); this.processQueue(); }
+  enqueueCouponBatch(coupons, link) { this.queue.push({ type: 'couponBatch', data: { coupons, link } }); this.processQueue(); }
 
   // ─────────────────────────────────────────────
   // Mensagem de Oferta
@@ -61,6 +63,7 @@ class TelegramService {
     msg += `📉 ${offer.discount}% OFF\n`;
 
     if (offer.timer) msg += `⏱ Termina em: ${offer.timer}\n`;
+    if (offer.activeCoupon) msg += `🎫 use o cupom \`${offer.activeCoupon}\`\n`;
 
     msg += `\n🔗 ${offer.link}`;
 
@@ -103,6 +106,76 @@ class TelegramService {
     } catch (err) {
       logger.debug(`Foto cupom falhou, enviando texto: ${err.message}`);
       await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'Markdown' });
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Mensagem de Cupons (lote — agrupa por desconto/mínimo/teto)
+  // ─────────────────────────────────────────────
+
+  _groupCoupons(coupons) {
+    const groups = new Map();
+    for (const c of coupons) {
+      const key = `${c.discount || ''}|${c.minimum || ''}|${c.maxDiscount || ''}|${c.discountText || ''}`;
+      if (!groups.has(key)) groups.set(key, { ...c, codes: [] });
+      groups.get(key).codes.push(c.code);
+    }
+    return Array.from(groups.values());
+  }
+
+  _formatCouponGroup(g) {
+    let line = '';
+    if (g.discount) {
+      line += `➖ *${g.discount}% OFF*`;
+      if (g.minimum) line += ` em compras acima de ${g.minimum}`;
+      if (g.maxDiscount) line += `, limitado a ${g.maxDiscount}`;
+      line += `\n`;
+    } else if (g.discountText) {
+      line += `➖ *${g.discountText}*\n`;
+    } else {
+      line += `➖ *Cupom de desconto*\n`;
+    }
+    line += `🎯 Use o cupom: \`${g.codes.join('`, `')}\`\n\n`;
+    return line;
+  }
+
+  // Divide os grupos em páginas que cabem no limite de legenda do Telegram (1024)
+  _paginateCouponGroups(groups, link) {
+    const HEADER = `🔥 *Novo Cupom Mercado Livre!*\n\n`;
+    const FOOTER = `🔗 ${link}`;
+    const MAX_LEN = 950; // margem de segurança sob o limite de 1024 da legenda
+
+    const pages = [];
+    let current = HEADER;
+    for (const g of groups) {
+      const line = this._formatCouponGroup(g);
+      if ((current + line + FOOTER).length > MAX_LEN && current !== HEADER) {
+        pages.push(current + FOOTER);
+        current = HEADER;
+      }
+      current += line;
+    }
+    pages.push(current + FOOTER);
+    return pages;
+  }
+
+  async sendCouponBatchMessage(coupons, link) {
+    if (!coupons || coupons.length === 0) return;
+    const groups = this._groupCoupons(coupons);
+    const pages = this._paginateCouponGroups(groups, link);
+
+    for (const msg of pages) {
+      const photo = fs.existsSync(ML_LOGO_LOCAL)
+        ? fs.createReadStream(ML_LOGO_LOCAL)
+        : ML_LOGO_URL;
+
+      try {
+        await this.bot.sendPhoto(this.chatId, photo, { caption: msg, parse_mode: 'Markdown' });
+      } catch (err) {
+        logger.debug(`Foto cupons (lote) falhou, enviando texto: ${err.message}`);
+        await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'Markdown' });
+      }
+      if (pages.length > 1) await new Promise(r => setTimeout(r, 1500));
     }
   }
 }

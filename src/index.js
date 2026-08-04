@@ -5,6 +5,7 @@ const db = require('./repositories/database');
 const mlService = require('./services/mercadoLivreService');
 const telegramService = require('./services/telegramService');
 const couponListener = require('./services/couponListener');
+const cuponomiaScraper = require('./services/cuponomiaScraper');
 const instagramService = require('./services/instagramService');
 const whatsappService = require('./services/whatsappService');
 
@@ -83,39 +84,49 @@ class BotApp {
   async runCouponCycle() {
     if (!this.isRunning) return;
     try {
-      // Busca de duas fontes em paralelo: canais Telegram + página ML
-      const [listenerCoupons, mlCoupons] = await Promise.all([
+      // Busca de três fontes em paralelo: cuponomia (mais estruturado) + canais Telegram + página ML
+      const [cuponomiaCoupons, listenerCoupons, mlCoupons] = await Promise.all([
+        cuponomiaScraper.getCoupons().catch(() => []),
         couponListener.getCoupons().catch(() => []),
         mlService.getCoupons().catch(() => []),
       ]);
 
-      // Mapa código → discountText do ML (fonte mais confiável para %desconto)
+      // Mapa código → discountText do ML (fonte mais confiável para %desconto quando falta)
       const mlDiscountMap = new Map(mlCoupons.map(c => [c.code, c.discountText]));
 
-      // Merge: começa com cupons do listener + adiciona exclusivos do ML
-      const allCoupons = [...listenerCoupons];
-      for (const mc of mlCoupons) {
-        if (!allCoupons.some(c => c.code === mc.code)) {
-          allCoupons.push({ ...mc, discount: null, minimum: null, limit: null });
+      // Merge: cuponomia tem prioridade (campos numéricos mais confiáveis),
+      // depois soma exclusivos do listener e da página ML.
+      const allCoupons = [...cuponomiaCoupons];
+      for (const source of [listenerCoupons, mlCoupons]) {
+        for (const c of source) {
+          if (!allCoupons.some(existing => existing.code === c.code)) {
+            allCoupons.push({ ...c, discount: c.discount ?? null, minimum: c.minimum ?? null, limit: c.limit ?? null });
+          }
         }
       }
 
-      let sent = 0;
+      const newCoupons = [];
       for (const coupon of allCoupons) {
         if (await db.isCouponProcessed(coupon.id)) continue;
 
-        // Enriquece com discountText do ML quando o listener não encontrou %
+        // Enriquece com discountText do ML quando ainda não tem %
         if (!coupon.discount && mlDiscountMap.has(coupon.code)) {
           coupon.discountText = mlDiscountMap.get(coupon.code);
         }
 
         await db.saveCoupon({ ...coupon, discountText: coupon.discountText || '', isActive: true });
-        telegramService.enqueueCoupon(coupon);
-        whatsappService.enqueueCoupon(coupon);
-        sent++;
+        newCoupons.push(coupon);
         logger.info(`Novo cupom: ${coupon.code}${coupon.discount ? ` (${coupon.discount}% OFF)` : coupon.discountText ? ` (${coupon.discountText})` : ''}`);
       }
-      logger.info(`[Cupons] ${sent} novo(s) enviado(s).`);
+
+      if (newCoupons.length > 0) {
+        const genericLink = await mlService.buildAffiliateLink('https://www.mercadolivre.com.br/ofertas')
+          .catch(() => null) || 'https://www.mercadolivre.com.br/cupons';
+        telegramService.enqueueCouponBatch(newCoupons, genericLink);
+        whatsappService.enqueueCouponBatch(newCoupons, genericLink);
+      }
+
+      logger.info(`[Cupons] ${newCoupons.length} novo(s) enviado(s).`);
     } catch (err) {
       logger.error('[Cupons] Erro:', err.message);
     } finally {
@@ -166,6 +177,7 @@ class BotApp {
 
       offer.originalLink = originalLink;
       offer.link = meluUrl;
+      offer.activeCoupon = await this._pickActiveCoupon(offer.category);
 
       const saved = await db.saveOffer(offer);
       if (!saved) continue;
@@ -178,6 +190,18 @@ class BotApp {
     }
 
     return sent;
+  }
+
+  // Busca o melhor cupom ativo aplicável à categoria da oferta (maior % primeiro)
+  async _pickActiveCoupon(category) {
+    try {
+      const candidates = await db.getActiveCouponsForCategory(category);
+      if (!candidates.length) return null;
+      candidates.sort((a, b) => (b.discount || 0) - (a.discount || 0));
+      return candidates[0].code || null;
+    } catch {
+      return null;
+    }
   }
 
   _syncWebsite() {

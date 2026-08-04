@@ -46,6 +46,9 @@ class Database {
         category      TEXT,
         discount_text TEXT,
         link          TEXT,
+        discount      INTEGER,
+        minimum       TEXT,
+        max_discount  TEXT,
         is_active     INTEGER DEFAULT 1,
         last_checked  DATETIME DEFAULT CURRENT_TIMESTAMP
       );
@@ -63,6 +66,9 @@ class Database {
         `ALTER TABLE coupons ADD COLUMN category TEXT`,
         `ALTER TABLE coupons ADD COLUMN discount_text TEXT`,
         `ALTER TABLE coupons ADD COLUMN link TEXT`,
+        `ALTER TABLE coupons ADD COLUMN discount INTEGER`,
+        `ALTER TABLE coupons ADD COLUMN minimum TEXT`,
+        `ALTER TABLE coupons ADD COLUMN max_discount TEXT`,
       ];
       migrations.forEach(sql => this.db.run(sql, () => {}));
     });
@@ -158,8 +164,8 @@ class Database {
 
   async saveCoupon(coupon) {
     const sql = `
-      INSERT OR REPLACE INTO coupons (id, code, description, category, discount_text, link, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO coupons (id, code, description, category, discount_text, link, discount, minimum, max_discount, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     return this.run(sql, [
       coupon.id,
@@ -168,6 +174,9 @@ class Database {
       coupon.category || null,
       coupon.discountText || null,
       coupon.link || null,
+      coupon.discount || null,
+      coupon.minimum || null,
+      coupon.maxDiscount || null,
       coupon.isActive ? 1 : 0,
     ]);
   }
@@ -188,8 +197,8 @@ class Database {
           OR LOWER(category) LIKE ?
           OR ? LIKE '%' || LOWER(category) || '%'
         )
-      ORDER BY last_checked DESC
-      LIMIT 3
+      ORDER BY discount DESC, last_checked DESC
+      LIMIT 10
     `, [`%${cat}%`, cat]);
   }
 

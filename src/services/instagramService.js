@@ -126,6 +126,7 @@ class InstagramService {
     if (price) L.push(`✅ Por: R$ ${this._fmt(price)}`);
     if (offer.discount) L.push(`📉 ${offer.discount}% OFF`);
     if (offer.timer)    L.push(`⏰ Oferta relâmpago — corre!`);
+    if (offer.activeCoupon) L.push(`🎫 use o cupom ${offer.activeCoupon}`);
     L.push('');
     L.push('🛒 Pega a sua pelo link na BIO 👉 @ofertadelas.promo');
     L.push('🌐 ofertadelas.com.br');
