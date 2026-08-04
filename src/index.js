@@ -6,8 +6,11 @@ const mlService = require('./services/mercadoLivreService');
 const telegramService = require('./services/telegramService');
 const couponListener = require('./services/couponListener');
 const instagramService = require('./services/instagramService');
+const whatsappService = require('./services/whatsappService');
 
-const WEBSITE_SYNC_CMD = 'scp -o StrictHostKeyChecking=no -i /home/ubuntu/.ssh/sync_key /home/ubuntu/Bot-Sales-channels/data/bot.sqlite ubuntu@18.189.200.12:/home/ubuntu/ofertadelas-website/data/bot.sqlite';
+// Comando de sync do SQLite com o EC2/VPS do website. Definido em WEBSITE_SYNC_CMD
+// no .env. Vazio (padrão) = sync desligado — útil rodando local sem servidor do site.
+const WEBSITE_SYNC_CMD = settings.websiteSyncCmd;
 
 const OFFER_INTERVAL_MS  = 1800000;  // 30 min — ofertas do dia
 const FLASH_INTERVAL_MS  =  600000;  // 10 min — relâmpago
@@ -108,6 +111,7 @@ class BotApp {
 
         await db.saveCoupon({ ...coupon, discountText: coupon.discountText || '', isActive: true });
         telegramService.enqueueCoupon(coupon);
+        whatsappService.enqueueCoupon(coupon);
         sent++;
         logger.info(`Novo cupom: ${coupon.code}${coupon.discount ? ` (${coupon.discount}% OFF)` : coupon.discountText ? ` (${coupon.discountText})` : ''}`);
       }
@@ -167,6 +171,7 @@ class BotApp {
       if (!saved) continue;
       await telegramService.enqueueOffer(offer);
       instagramService.enqueueOffer(offer);   // Caminho A: espelha as melhores no Instagram
+      whatsappService.enqueueOffer(offer);    // Espelha no grupo do WhatsApp
       sent++;
 
       logger.info(`Nova oferta: ${offer.discount}% OFF | ${offer.category} | ${offer.title.substring(0, 50)}`);
@@ -176,6 +181,7 @@ class BotApp {
   }
 
   _syncWebsite() {
+    if (!WEBSITE_SYNC_CMD) return;   // sync desligado (rodando local sem servidor do site)
     exec(WEBSITE_SYNC_CMD, (err) => {
       if (err) logger.warn('[Sync] Falha ao sincronizar SQLite com website:', err.message);
       else logger.info('[Sync] SQLite sincronizado com o website.');

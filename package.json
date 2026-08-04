@@ -7,12 +7,14 @@
     "start": "NODE_ENV=production node src/index.js",
     "dev": "NODE_ENV=development nodemon src/index.js",
     "save-session": "node src/utils/save-session.js",
+    "wa-login": "node src/utils/whatsapp-login.js",
     "test": "jest",
     "lint": "eslint src/**/*.js"
   },
   "author": "Manus AI",
   "license": "MIT",
   "dependencies": {
+    "@whiskeysockets/baileys": "^6.17.16",
     "axios": "^1.6.0",
     "bullmq": "^5.1.0",
     "cheerio": "^1.0.0-rc.12",
@@ -23,8 +25,9 @@
     "node-telegram-bot-api": "^0.64.0",
     "pino": "^8.16.1",
     "pino-pretty": "^10.2.3",
-    "sqlite3": "^5.1.7",
-    "playwright": "^1.40.0"
+    "playwright": "^1.40.0",
+    "qrcode-terminal": "^0.12.0",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "eslint": "^8.53.0",

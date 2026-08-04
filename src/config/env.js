@@ -31,6 +31,9 @@ const envSchema = Joi.object({
   MIN_DISCOUNT: Joi.number().default(0),
   LOG_LEVEL: Joi.string().valid('info', 'debug', 'error', 'warn').default('info'),
   COUPON_CHANNELS: Joi.string().default('promotop'),
+  WHATSAPP_GROUP_ID: Joi.string().allow('').default(''),
+  WHATSAPP_AUTH_DIR: Joi.string().allow('').default('./data/whatsapp_auth'),
+  WEBSITE_SYNC_CMD: Joi.string().allow('').default(''),
 }).unknown().required();
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -64,10 +67,15 @@ module.exports = {
   settings: {
     checkInterval: envVars.CHECK_INTERVAL_MS,
     minDiscount: envVars.MIN_DISCOUNT,
+    websiteSyncCmd: envVars.WEBSITE_SYNC_CMD,
     instagram: {
       userId: process.env.INSTAGRAM_USER_ID,
       token:  process.env.INSTAGRAM_TOKEN,
     },
+  },
+  whatsapp: {
+    groupId: envVars.WHATSAPP_GROUP_ID,
+    authDir: path.resolve(process.cwd(), envVars.WHATSAPP_AUTH_DIR),
   },
   logLevel: envVars.LOG_LEVEL,
   couponChannels: envVars.COUPON_CHANNELS.split(',').map(s => s.trim()).filter(Boolean),
