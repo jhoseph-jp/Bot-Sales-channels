@@ -185,23 +185,6 @@ class Database {
     return this.all('SELECT * FROM coupons WHERE is_active = 1 ORDER BY last_checked DESC');
   }
 
-  // Retorna cupons ativos que se aplicam a uma categoria de oferta
-  async getActiveCouponsForCategory(category) {
-    const cat = (category || '').toLowerCase();
-    return this.all(`
-      SELECT * FROM coupons
-      WHERE is_active = 1
-        AND (
-          category IS NULL
-          OR category = ''
-          OR LOWER(category) LIKE ?
-          OR ? LIKE '%' || LOWER(category) || '%'
-        )
-      ORDER BY discount DESC, last_checked DESC
-      LIMIT 10
-    `, [`%${cat}%`, cat]);
-  }
-
   async updateCouponStatus(id, isActive) {
     return this.run(
       `UPDATE coupons SET is_active = ?, last_checked = CURRENT_TIMESTAMP WHERE id = ?`,

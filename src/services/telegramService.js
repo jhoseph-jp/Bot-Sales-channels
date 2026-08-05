@@ -8,6 +8,10 @@ const PriceCalculator = require('../utils/priceCalculator');
 const ML_LOGO_URL = 'https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadolibre/logo__large_plus.png';
 const ML_LOGO_LOCAL = path.resolve(process.cwd(), 'data', 'ml_logo.jpg');
 
+function escapeHtml(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 class TelegramService {
   constructor() {
     this.bot = new TelegramBot(telegram.token, { polling: false });
@@ -55,28 +59,26 @@ class TelegramService {
     const current  = PriceCalculator.formatPrice(offer.price);
 
     let msg = '';
-    if (offer.isFlash) msg += `⚡ OFERTA RELÂMPAGO!\n\n`;
+    if (offer.isFlash) msg += `⚡ <b>OFERTA RELÂMPAGO!</b>\n\n`;
 
-    msg += `${emoji} ${offer.title}\n\n`;
-    msg += `~~${original}~~\n`;
-    msg += `💰 *${current}*\n`;
-    msg += `📉 ${offer.discount}% OFF\n`;
+    msg += `${emoji} ${escapeHtml(offer.title)}\n\n`;
+    msg += `🏷 De: <s>${escapeHtml(original)}</s>\n`;
+    msg += `💰 Por: <b>${escapeHtml(current)}</b>  (📉 ${offer.discount}% OFF)\n`;
 
-    if (offer.timer) msg += `⏱ Termina em: ${offer.timer}\n`;
-    if (offer.activeCoupon) msg += `🎫 use o cupom \`${offer.activeCoupon}\`\n`;
+    if (offer.timer) msg += `⏱ Termina em: ${escapeHtml(offer.timer)}\n`;
 
-    msg += `\n🔗 ${offer.link}`;
+    msg += `\n🔗 ${escapeHtml(offer.link)}`;
 
     if (offer.image) {
       try {
-        await this.bot.sendPhoto(this.chatId, offer.image, { caption: msg, parse_mode: 'Markdown' });
+        await this.bot.sendPhoto(this.chatId, offer.image, { caption: msg, parse_mode: 'HTML' });
         return;
       } catch (err) {
         logger.debug(`Foto oferta falhou, enviando texto: ${err.message}`);
       }
     }
 
-    await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'Markdown', disable_web_page_preview: false });
+    await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'HTML', disable_web_page_preview: false });
   }
 
   // ─────────────────────────────────────────────

@@ -30,7 +30,7 @@ const envSchema = Joi.object({
   CHECK_INTERVAL_MS: Joi.number().default(300000), // 5 minutos
   MIN_DISCOUNT: Joi.number().default(0),
   LOG_LEVEL: Joi.string().valid('info', 'debug', 'error', 'warn').default('info'),
-  COUPON_CHANNELS: Joi.string().default('promotop'),
+  COUPON_CHANNELS: Joi.string().default('promotop,grupo_promocoes'),
   WHATSAPP_GROUP_ID: Joi.string().allow('').default(''),
   WHATSAPP_AUTH_DIR: Joi.string().allow('').default('./data/whatsapp_auth'),
   WEBSITE_SYNC_CMD: Joi.string().allow('').default(''),

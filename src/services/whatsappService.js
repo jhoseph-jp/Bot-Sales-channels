@@ -130,7 +130,6 @@ class WhatsAppService {
     msg += `📉 ${offer.discount}% OFF\n`;
 
     if (offer.timer) msg += `⏱ Termina em: ${offer.timer}\n`;
-    if (offer.activeCoupon) msg += `🎫 use o cupom *${offer.activeCoupon}*\n`;
 
     msg += `\n🔗 ${offer.link}`;
 
