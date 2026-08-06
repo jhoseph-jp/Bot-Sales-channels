@@ -95,20 +95,39 @@ class BotApp {
       // Mapa código → discountText do ML (fonte mais confiável para %desconto quando falta)
       const mlDiscountMap = new Map(mlCoupons.map(c => [c.code, c.discountText]));
 
-      // Códigos confirmados na própria página do ML nesse ciclo — usado como fonte da
-      // verdade pra validar cupons de terceiros (cuponomia/canais Telegram) antes de
-      // ativá-los, e pra revalidar os que já estavam ativos (detecta expirados).
+      // Cada fonte só pode ser confirmada/revalidada contra ela mesma — a página de
+      // cupons do ML NUNCA lista os códigos genéricos de terceiros da cuponomia (são
+      // catálogos diferentes), então cruzar cuponomia contra mlCodes sempre falha (ou,
+      // pior, quando o scrape do ML cai — comum, ML bloqueia bot de IP de VPS — a
+      // checagem inteira era pulada e cupons ficavam "presos" ativos pra sempre. Por
+      // isso cada fonte é seu próprio ground-truth.
       const mlCodes = new Set(mlCoupons.map(c => c.code));
+      const cuponomiaCodes = new Set(cuponomiaCoupons.map(c => c.code));
+
+      const taggedCuponomia = cuponomiaCoupons.map(c => ({ ...c, source: 'cuponomia' }));
+      const taggedListener  = listenerCoupons.map(c => ({ ...c, source: 'listener', discount: c.discount ?? null, minimum: c.minimum ?? null, limit: c.limit ?? null }));
+      const taggedMl        = mlCoupons.map(c => ({ ...c, source: 'ml', discount: c.discount ?? null, minimum: c.minimum ?? null, limit: c.limit ?? null }));
 
       // Merge: cuponomia tem prioridade (campos numéricos mais confiáveis),
       // depois soma exclusivos do listener e da página ML.
-      const allCoupons = [...cuponomiaCoupons];
-      for (const source of [listenerCoupons, mlCoupons]) {
+      const allCoupons = [...taggedCuponomia];
+      for (const source of [taggedListener, taggedMl]) {
         for (const c of source) {
           if (!allCoupons.some(existing => existing.code === c.code)) {
-            allCoupons.push({ ...c, discount: c.discount ?? null, minimum: c.minimum ?? null, limit: c.limit ?? null });
+            allCoupons.push(c);
           }
         }
+      }
+
+      // Confirma um cupom contra a fonte que pode atestar sua validade. cuponomia e
+      // ml são confiadas ao ingerir (acabaram de ser raspadas frescas agora); listener
+      // (canais Telegram) é terceiro não-oficial reivindicando cupom do ML, então
+      // precisa aparecer na página real do ML pra ser confirmado.
+      function isVerified(coupon) {
+        if (coupon.source === 'listener') {
+          return mlCoupons.length === 0 || mlCodes.has(coupon.code); // sem dado do ML: não bloqueia
+        }
+        return true; // cuponomia/ml: a própria presença no scrape desse ciclo já confirma
       }
 
       const newCoupons = [];
@@ -130,11 +149,7 @@ class BotApp {
           continue;
         }
 
-        // Não confirmado na página do ML nesse ciclo — não vira cupom ativo (não entra
-        // na mensagem do bot nem é oferecido como cupom de oferta), só fica salvo pra
-        // não reprocessar. Só roda essa checagem quando o scrape do ML trouxe resultado
-        // (mlCoupons vazio normalmente é falha de scrape, não "não tem cupom nenhum").
-        if (mlCoupons.length > 0 && !mlCodes.has(coupon.code)) {
+        if (!isVerified(coupon)) {
           await db.saveCoupon({ ...coupon, discountText: coupon.discountText || '', isActive: false });
           unverified++;
           continue;
@@ -145,21 +160,27 @@ class BotApp {
         logger.info(`Novo cupom: ${coupon.code}${coupon.discount ? ` (${coupon.discount}% OFF)` : coupon.discountText ? ` (${coupon.discountText})` : ''}`);
       }
       if (filtered > 0) logger.info(`[Cupons] ${filtered} filtrado(s) (fora do público-alvo).`);
-      if (unverified > 0) logger.info(`[Cupons] ${unverified} não confirmado(s) na página do ML.`);
+      if (unverified > 0) logger.info(`[Cupons] ${unverified} não confirmado(s) na fonte de origem.`);
 
-      // Revalida cupons já ativos: se não aparecem mais na página do ML nesse ciclo,
-      // provavelmente expiraram — desativa pra não serem mais enviados/oferecidos.
-      if (mlCoupons.length > 0) {
-        const stillActive = await db.getActiveCoupons();
-        let deactivated = 0;
-        for (const c of stillActive) {
-          if (!mlCodes.has(c.code)) {
-            await db.updateCouponStatus(c.id, false);
-            deactivated++;
-          }
+      // Revalida cupons já ativos contra a fonte que os originou: se sumiram desse
+      // ciclo, provavelmente expiraram — desativa pra não serem mais enviados/ofertados.
+      const stillActive = await db.getActiveCoupons();
+      let deactivated = 0;
+      for (const c of stillActive) {
+        if (c.source === 'cuponomia' && cuponomiaCoupons.length > 0 && !cuponomiaCodes.has(c.code)) {
+          await db.updateCouponStatus(c.id, false);
+          deactivated++;
+        } else if (c.source !== 'cuponomia' && mlCoupons.length > 0 && !mlCodes.has(c.code)) {
+          await db.updateCouponStatus(c.id, false);
+          deactivated++;
         }
-        if (deactivated > 0) logger.info(`[Cupons] ${deactivated} desativado(s) (não encontrados mais na página do ML).`);
       }
+      if (deactivated > 0) logger.info(`[Cupons] ${deactivated} desativado(s) (não encontrados mais na fonte de origem).`);
+
+      // Trava de segurança: se as raspagens ficarem fora do ar por dias seguidos, um
+      // cupom ativo nunca revalidado se auto-expira em vez de ficar preso pra sempre.
+      const stale = await db.deactivateStaleCoupons(72);
+      if (stale.changes > 0) logger.info(`[Cupons] ${stale.changes} desativado(s) por TTL (72h sem revalidação).`);
 
       if (newCoupons.length > 0) {
         const genericLink = await mlService.buildAffiliateLink('https://www.mercadolivre.com.br/ofertas')

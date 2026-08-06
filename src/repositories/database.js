@@ -50,6 +50,7 @@ class Database {
         minimum       TEXT,
         max_discount  TEXT,
         is_active     INTEGER DEFAULT 1,
+        source        TEXT,
         last_checked  DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `;
@@ -69,6 +70,7 @@ class Database {
         `ALTER TABLE coupons ADD COLUMN discount INTEGER`,
         `ALTER TABLE coupons ADD COLUMN minimum TEXT`,
         `ALTER TABLE coupons ADD COLUMN max_discount TEXT`,
+        `ALTER TABLE coupons ADD COLUMN source TEXT`,
       ];
       migrations.forEach(sql => this.db.run(sql, () => {}));
     });
@@ -164,8 +166,8 @@ class Database {
 
   async saveCoupon(coupon) {
     const sql = `
-      INSERT OR REPLACE INTO coupons (id, code, description, category, discount_text, link, discount, minimum, max_discount, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO coupons (id, code, description, category, discount_text, link, discount, minimum, max_discount, is_active, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     return this.run(sql, [
       coupon.id,
@@ -178,6 +180,7 @@ class Database {
       coupon.minimum || null,
       coupon.maxDiscount || null,
       coupon.isActive ? 1 : 0,
+      coupon.source || null,
     ]);
   }
 
@@ -194,6 +197,16 @@ class Database {
 
   async deactivateAllCoupons() {
     return this.run(`UPDATE coupons SET is_active = 0`);
+  }
+
+  // Trava de segurança: cupom ativo que não é revalidado há muito tempo (fontes
+  // fora do ar por dias seguidos, por ex.) é desativado mesmo sem confirmação de
+  // expiração — evita ficar "travado" divulgando cupom morto indefinidamente.
+  async deactivateStaleCoupons(maxAgeHours) {
+    return this.run(
+      `UPDATE coupons SET is_active = 0 WHERE is_active = 1 AND last_checked < datetime('now', '-' || ? || ' hours')`,
+      [maxAgeHours]
+    );
   }
 }
 
