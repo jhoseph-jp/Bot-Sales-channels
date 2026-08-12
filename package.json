@@ -8,6 +8,7 @@
     "dev": "NODE_ENV=development nodemon src/index.js",
     "save-session": "node src/utils/save-session.js",
     "wa-login": "node src/utils/whatsapp-login.js",
+    "refresh-ig-token": "node src/utils/refresh-instagram-token.js",
     "test": "jest",
     "lint": "eslint src/**/*.js"
   },
