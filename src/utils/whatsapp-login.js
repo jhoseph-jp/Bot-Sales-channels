@@ -16,6 +16,7 @@ const {
   default: makeWASocket,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
+  DisconnectReason,
 } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const path = require('path');
@@ -25,7 +26,8 @@ const AUTH_DIR = process.env.WHATSAPP_AUTH_DIR || path.resolve(process.cwd(), 'd
 
 async function main() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-  const { version } = await fetchLatestBaileysVersion();
+  const { version, isLatest } = await fetchLatestBaileysVersion();
+  console.log(`Baileys usando versão de protocolo WA: ${version.join('.')} (mais recente: ${isLatest})`);
 
   const sock = makeWASocket({ version, auth: state, logger: pino({ level: 'silent' }) });
 
@@ -37,6 +39,25 @@ async function main() {
     if (qr) {
       console.log('\n📲 Escaneie este QR Code com o WhatsApp do número do bot:\n');
       qrcode.generate(qr, { small: true });
+    }
+
+    if (connection === 'close') {
+      const err = update.lastDisconnect?.error;
+      const statusCode = err?.output?.statusCode;
+
+      // Esperado logo após o QR ser aceito: credenciais já foram salvas,
+      // só falta reconectar pra sessão abrir de verdade.
+      if (statusCode === DisconnectReason.restartRequired) {
+        console.log('\n🔄 Pareamento aceito, reconectando...\n');
+        main();
+        return;
+      }
+
+      console.log('\n❌ Conexão fechada.');
+      console.log(`   statusCode: ${statusCode ?? '(nenhum)'}`);
+      console.log(`   motivo: ${err?.message ?? '(sem mensagem)'}`);
+      if (err?.output?.payload) console.log('   payload:', JSON.stringify(err.output.payload));
+      process.exit(1);
     }
 
     if (connection === 'open') {
