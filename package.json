@@ -15,7 +15,7 @@
   "author": "Manus AI",
   "license": "MIT",
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.17.16",
+    "@whiskeysockets/baileys": "6.7.24",
     "axios": "^1.6.0",
     "bullmq": "^5.1.0",
     "cheerio": "^1.0.0-rc.12",
