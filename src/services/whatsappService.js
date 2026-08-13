@@ -119,6 +119,25 @@ class WhatsAppService {
   }
 
   // ─────────────────────────────────────────────
+  // Envio com retry — o Baileys falha intermitentemente com "No sessions"
+  // ao distribuir a sender key do grupo pra múltiplos dispositivos dos
+  // participantes; um dispositivo diferente falha a cada tentativa, então
+  // repetir o envio geralmente resolve.
+  // ─────────────────────────────────────────────
+
+  async _sendWithRetry(content, tries = 3) {
+    for (let i = 1; i <= tries; i++) {
+      try {
+        return await this.sock.sendMessage(this.groupId, content);
+      } catch (err) {
+        if (i === tries) throw err;
+        logger.debug(`[WA] Envio falhou (tentativa ${i}/${tries}): ${err.message}`);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────
   // Mensagem de Oferta
   // ─────────────────────────────────────────────
 
@@ -143,14 +162,14 @@ class WhatsAppService {
 
     if (offer.image) {
       try {
-        await this.sock.sendMessage(this.groupId, { image: { url: offer.image }, caption: msg });
+        await this._sendWithRetry({ image: { url: offer.image }, caption: msg });
         return;
       } catch (err) {
         logger.debug(`[WA] Foto oferta falhou, enviando texto: ${err.message}`);
       }
     }
 
-    await this.sock.sendMessage(this.groupId, { text: msg });
+    await this._sendWithRetry({ text: msg });
   }
 
   // ─────────────────────────────────────────────
@@ -176,10 +195,10 @@ class WhatsAppService {
       : { url: ML_LOGO_URL };
 
     try {
-      await this.sock.sendMessage(this.groupId, { image, caption: msg });
+      await this._sendWithRetry({ image, caption: msg });
     } catch (err) {
       logger.debug(`[WA] Foto cupom falhou, enviando texto: ${err.message}`);
-      await this.sock.sendMessage(this.groupId, { text: msg });
+      await this._sendWithRetry({ text: msg });
     }
   }
 
@@ -244,10 +263,10 @@ class WhatsAppService {
         : { url: ML_LOGO_URL };
 
       try {
-        await this.sock.sendMessage(this.groupId, { image, caption: msg });
+        await this._sendWithRetry({ image, caption: msg });
       } catch (err) {
         logger.debug(`[WA] Foto cupons (lote) falhou, enviando texto: ${err.message}`);
-        await this.sock.sendMessage(this.groupId, { text: msg });
+        await this._sendWithRetry({ text: msg });
       }
       if (pages.length > 1) await new Promise(r => setTimeout(r, 1500));
     }
