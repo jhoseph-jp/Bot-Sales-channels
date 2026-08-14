@@ -210,10 +210,17 @@ class BotApp {
 
     if (newOffers.length === 0) return 0;
 
+    // Reserva metade das vagas do ciclo pra roupas/calçados quando houver candidatas —
+    // senão elas competem por desconto% direto com beleza/cozinha e ficam de fora.
+    const CLOTHING_CATEGORIES = new Set(['Moda', 'Calçados']);
+    const clothing = newOffers.filter(o => CLOTHING_CATEGORIES.has(o.category)).sort((a, b) => b.discount - a.discount);
+    const rest = newOffers.filter(o => !CLOTHING_CATEGORIES.has(o.category)).sort((a, b) => b.discount - a.discount);
+
     // Pega até 3x o limite para compensar descartes por gênero
-    const candidates = newOffers
-      .sort((a, b) => b.discount - a.discount)
-      .slice(0, maxPerCycle * 3);
+    const clothingQuota = Math.ceil(maxPerCycle / 2) * 3;
+    const reservedClothing = clothing.slice(0, clothingQuota);
+    const leftover = [...clothing.slice(clothingQuota), ...rest].sort((a, b) => b.discount - a.discount);
+    const candidates = [...reservedClothing, ...leftover].slice(0, maxPerCycle * 3);
 
     let sent = 0;
 

@@ -114,6 +114,9 @@ const CLOTHES_KEYWORDS = [
   'camisa feminina', 'camisa social feminina', 'camisa cropped',
   // Acessórios de roupa
   'kimono feminino', 'cardigan feminino', 'blazer feminino', 'colete feminino',
+  // Standalone adicionais — termos inequivocamente femininos no mercado BR
+  // ('saia'/'cropped' já cobrem variações como "saia jeans"/"cropped tricot" por substring)
+  'macaquinho', 'colete jeans feminino', 'calça skinny cintura alta',
 ];
 
 // Nicho 2 — Calçados
@@ -363,6 +366,16 @@ class MercadoLivreService {
   // Extração de cards
   // ─────────────────────────────────────────────
 
+  // ML carrega mais cards via lazy-load conforme a página rola. Sem isso, só os
+  // cards já visíveis no primeiro paint entram na extração — a aba "moda" perde
+  // a maior parte do catálogo disponível.
+  async _scrollToLoadMore(page, times = 4) {
+    for (let i = 0; i < times; i++) {
+      await page.mouse.wheel(0, 2500);
+      await page.waitForTimeout(700);
+    }
+  }
+
   async _extractRawOffers(page) {
     return page.evaluate(() => {
       const results = [];
@@ -498,6 +511,7 @@ class MercadoLivreService {
               await page.goto(link.href, { waitUntil: 'domcontentloaded', timeout: 20000 });
               await page.waitForSelector('.poly-card', { timeout: 10000 }).catch(() => {});
               await page.waitForTimeout(1500);
+              await this._scrollToLoadMore(page);
               const raw = await this._extractRawOffers(page);
               raw.forEach(r => { r._fromFeminineCategory = true; });
               allRaw.push(...raw);
@@ -519,6 +533,7 @@ class MercadoLivreService {
 
       await page.waitForSelector('.poly-card', { timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(2500);
+      await this._scrollToLoadMore(page);
       const rawOffers = await this._extractRawOffers(page);
       const offers = this._processRawOffers(rawOffers, target);
       logger.info(`[Scraper] ${target.label}: ${offers.length} femininas ≥${settings.minDiscount}%`);
