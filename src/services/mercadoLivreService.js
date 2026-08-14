@@ -459,14 +459,20 @@ class MercadoLivreService {
         : PriceCalculator.extractDiscountFromBadge(raw.discountBadge);
       if (discount < settings.minDiscount) continue;
       if (!isFeminine(raw.title, raw._fromFeminineCategory)) continue;
-      const cleanLink = raw.link.split('?')[0];
+      // Alguns cards (ex.: carrossel "plus-size") anexam tracking depois de '#'
+      // (c_tracking_id, deal_print_id, c_container_id...) que muda a cada scrape —
+      // sem remover, o mesmo produto nunca bate como duplicata.
+      const cleanLink = raw.link.split('?')[0].split('#')[0];
       if (seenUrls.has(cleanLink)) continue;
       seenUrls.add(cleanLink);
       const { emoji, label } = getCategoryInfo(raw.title);
       const coupon   = CouponValidator.shouldIncludeCoupon(raw.couponText) ? CouponValidator.formatCoupon(raw.couponText) : '';
-      // MLB ID é o identificador estável do produto — não muda com preço ou URL
-      const mlbMatch = cleanLink.match(/MLB\d+/i);
-      const id = mlbMatch ? mlbMatch[0].toUpperCase() : crypto.createHash('md5').update(`${raw.title}-${currentPrice}`).digest('hex');
+      // MLB ID é o identificador estável do produto — não muda com preço ou URL.
+      // Links tipo produto.mercadolivre.com.br usam "MLB-1234567" (com hífen);
+      // sem o hífen opcional, o regex nunca casava esse formato e caía no fallback
+      // MD5 (ou pior: casava um MLB\d+ de tracking dentro do próprio fragmento).
+      const mlbMatch = cleanLink.match(/MLB-?\d+/i);
+      const id = mlbMatch ? mlbMatch[0].replace(/-/g, '').toUpperCase() : crypto.createHash('md5').update(`${raw.title}-${currentPrice}`).digest('hex');
       offers.push({ id, title: raw.title, price: currentPrice, originalPrice: originalPrice > 0 ? originalPrice : currentPrice, discount, link: cleanLink, image: raw.image, coupon, category: label, emoji, isFlash: target.isFlash });
     }
     return offers;
