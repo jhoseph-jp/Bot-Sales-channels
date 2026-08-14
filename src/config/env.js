@@ -34,6 +34,8 @@ const envSchema = Joi.object({
   WHATSAPP_GROUP_ID: Joi.string().allow('').default(''),
   WHATSAPP_AUTH_DIR: Joi.string().allow('').default('./data/whatsapp_auth'),
   WEBSITE_SYNC_CMD: Joi.string().allow('').default(''),
+  SHOPEE_APP_ID: Joi.string().allow('').default(''),
+  SHOPEE_SECRET: Joi.string().allow('').default(''),
 }).unknown().required();
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -76,6 +78,10 @@ module.exports = {
   whatsapp: {
     groupId: envVars.WHATSAPP_GROUP_ID,
     authDir: path.resolve(process.cwd(), envVars.WHATSAPP_AUTH_DIR),
+  },
+  shopee: {
+    appId: envVars.SHOPEE_APP_ID,
+    secret: envVars.SHOPEE_SECRET,
   },
   logLevel: envVars.LOG_LEVEL,
   couponChannels: envVars.COUPON_CHANNELS.split(',').map(s => s.trim()).filter(Boolean),
