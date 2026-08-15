@@ -275,7 +275,7 @@ function getCategoryInfo(title) {
     return { emoji: '🍳', label: 'Cozinha' };
   if (/toalha|lençol|edredom|colcha/.test(t))
     return { emoji: '🏠', label: 'Casa' };
-  return { emoji: '✨', label: 'Feminino' };
+  return { emoji: '✨', label: 'Achadinho' };
 }
 
 // ─────────────────────────────────────────────
