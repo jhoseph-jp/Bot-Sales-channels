@@ -203,6 +203,16 @@ const REQUIRES_QUALIFIER = [
 
 const GENDER_QUALIFIERS = ['feminino', 'feminina', 'mulher', 'senhora', 'para ela', 'para mulher'];
 
+// Não é público-alvo — não bloqueia, só reduz a proporção (ver PLUS_SIZE_KEEP_RATIO)
+const PLUS_SIZE_KEYWORDS = ['plus size', 'plus-size', 'plussize', 'tamanho grande especial', 'tamanho especial plus'];
+// Mantém só 1 a cada N ofertas plus-size (as demais são descartadas em _processRawOffers)
+const PLUS_SIZE_KEEP_RATIO = 4;
+
+function isPlusSize(title) {
+  const t = normalize(title);
+  return PLUS_SIZE_KEYWORDS.some(kw => t.includes(normalize(kw)));
+}
+
 function normalize(str) {
   return str.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
 }
@@ -450,6 +460,7 @@ class MercadoLivreService {
   _processRawOffers(rawOffers, target) {
     const offers = [];
     const seenUrls = new Set();
+    let plusSizeCount = 0;
     for (const raw of rawOffers) {
       const currentPrice  = PriceCalculator.parsePrice(raw.currentFraction, raw.currentCents);
       if (currentPrice <= 0) continue;
@@ -459,6 +470,11 @@ class MercadoLivreService {
         : PriceCalculator.extractDiscountFromBadge(raw.discountBadge);
       if (discount < settings.minDiscount) continue;
       if (!isFeminine(raw.title, raw._fromFeminineCategory)) continue;
+      // Plus size não é o público-alvo — não bloqueia, mas reduz a proporção
+      if (isPlusSize(raw.title)) {
+        plusSizeCount++;
+        if (plusSizeCount % PLUS_SIZE_KEEP_RATIO !== 1) continue;
+      }
       // Alguns cards (ex.: carrossel "plus-size") anexam tracking depois de '#'
       // (c_tracking_id, deal_print_id, c_container_id...) que muda a cada scrape —
       // sem remover, o mesmo produto nunca bate como duplicata.
