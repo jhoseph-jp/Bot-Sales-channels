@@ -9,6 +9,14 @@ yarn.lock
 .env.prod
 .env.local
 .env.*.local
+# Backups de .env (ex.: .env.bak-20260820201839) — as regras acima NÃO os pegam,
+# e sem isto um `git add -A` no servidor commitaria segredos no repo público.
+.env.*
+!.env.example
+
+# Backups automáticos de edições feitas direto no servidor (*.bak-<timestamp>)
+*.bak
+*.bak-*
 
 # Banco de Dados
 data/*.sqlite
