@@ -167,14 +167,22 @@ class ShopeeService {
 
   _mapProductOffer(n) {
     const price = parseFloat(n.priceMin) || 0;
-    const priceMax = parseFloat(n.priceMax) || price;
     const discount = Math.round(parseFloat(n.priceDiscountRate) || 0);
+
+    // priceMin/priceMax são a FAIXA de preço entre as variações (cor/tamanho), ambos
+    // já com desconto aplicado — priceMax não é o preço "de". O preço antes do
+    // desconto tem que ser reconstruído a partir do priceDiscountRate.
+    const originalPrice = price > 0 && discount > 0 && discount < 100
+      ? Math.round((price / (1 - discount / 100)) * 100) / 100
+      : price;
+
     return {
       id: `SHOPEE-${n.itemId}`,
       title: n.productName,
       price,
-      originalPrice: priceMax > price ? priceMax : price,
-      discount,
+      originalPrice,
+      // Sem "de" maior que o "por" não há desconto real pra anunciar
+      discount: originalPrice > price ? discount : 0,
       link: n.offerLink || n.productLink,
       image: n.imageUrl,
       category: '',

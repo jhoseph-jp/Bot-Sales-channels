@@ -122,7 +122,8 @@ class InstagramService {
     const L = [];
     L.push(`🔥 ${offer.title}`);
     L.push('');
-    if (old)   L.push(`❌ De: R$ ${this._fmt(old)}`);
+    // Só mostra o "De:" quando ele é de fato maior — evita "De R$ X / Por R$ X"
+    if (old && old > price) L.push(`❌ De: R$ ${this._fmt(old)}`);
     if (price) L.push(`✅ Por: R$ ${this._fmt(price)}`);
     if (offer.discount) L.push(`📉 ${offer.discount}% OFF`);
     if (offer.timer)    L.push(`⏰ Oferta relâmpago — corre!`);

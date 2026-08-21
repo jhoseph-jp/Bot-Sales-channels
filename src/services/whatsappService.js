@@ -158,7 +158,8 @@ class WhatsAppService {
     if (offer.isFlash) msg += `⚡ OFERTA RELÂMPAGO!\n\n`;
 
     msg += `${emoji} ${offer.title}\n\n`;
-    msg += `~${original}~\n`;                 // WhatsApp: tachado usa um único ~
+    // Só mostra o "de" quando ele é de fato maior — evita "R$ X riscado / R$ X"
+    if (offer.originalPrice > offer.price) msg += `~${original}~\n`;   // WhatsApp: tachado usa um único ~
     msg += `💰 *${current}*\n`;
     msg += `📉 ${offer.discount}% OFF\n`;
 

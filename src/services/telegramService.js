@@ -69,7 +69,8 @@ class TelegramService {
     if (offer.isFlash) msg += `⚡ <b>OFERTA RELÂMPAGO!</b>\n\n`;
 
     msg += `${emoji} ${escapeHtml(offer.title)}\n\n`;
-    msg += `🏷 De: <s>${escapeHtml(original)}</s>\n`;
+    // Só mostra o "De:" quando ele é de fato maior — evita "R$ X riscado / R$ X"
+    if (offer.originalPrice > offer.price) msg += `🏷 De: <s>${escapeHtml(original)}</s>\n`;
     msg += `💰 Por: <b>${escapeHtml(current)}</b>  (📉 ${offer.discount}% OFF)\n`;
 
     if (offer.timer) msg += `⏱ Termina em: ${escapeHtml(offer.timer)}\n`;
