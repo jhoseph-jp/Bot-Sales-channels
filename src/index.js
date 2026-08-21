@@ -49,7 +49,7 @@ class BotApp {
       this.runCouponCycle();
       this.runShopeeCycle();
 
-      logger.info(`Bot iniciado. Ofertas ML e Shopee: ${MIN_PER_CYCLE}-${MAX_PER_CYCLE} a cada 75 min, espaçadas de 1-3 min | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE}, imediato) | Cupons: 60 min | Categorias: ${['moda','calçados','beleza','esportes','acessórios','joias'].join(', ')}`);
+      logger.info(`Bot iniciado. Ofertas ML e Shopee: ${MIN_PER_CYCLE}-${MAX_PER_CYCLE} a cada 75 min, espaçadas de 1-3 min | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE}, imediato) | Cupons: 60 min | Categorias (prioridade): Calçados/Roupas e Bolsas > Camisetas e Regatas > Calças > Tênis > Acessórios > beleza/joias/bijuteria/cozinha`);
     } catch (err) {
       logger.error('Erro fatal ao iniciar:', err.message);
       process.exit(1);
@@ -298,11 +298,14 @@ class BotApp {
 
     if (newOffers.length === 0) return 0;
 
-    // Reserva metade das vagas do ciclo pra roupas/calçados quando houver candidatas —
-    // senão elas competem por desconto% direto com beleza/cozinha e ficam de fora.
-    const CLOTHING_CATEGORIES = new Set(['Moda', 'Calçados']);
-    const clothing = newOffers.filter(o => CLOTHING_CATEGORIES.has(o.category)).sort((a, b) => b.discount - a.discount);
-    const rest = newOffers.filter(o => !CLOTHING_CATEGORIES.has(o.category)).sort((a, b) => b.discount - a.discount);
+    // Reserva metade das vagas do ciclo pra roupas/calçados/acessórios quando houver
+    // candidatas — senão elas competem por desconto% direto com beleza/cozinha e ficam
+    // de fora. Dentro dessa reserva, respeita a ordem de prioridade das categorias-fonte
+    // (Calçados/Roupas e Bolsas > Camisetas e Regatas > Calças > Tênis > Acessórios)
+    // antes do desconto, seguindo a prioridade pedida para o scraping.
+    const isPriorityClothing = o => o.categoryPriority !== undefined && o.categoryPriority !== null;
+    const clothing = newOffers.filter(isPriorityClothing).sort((a, b) => a.categoryPriority - b.categoryPriority || b.discount - a.discount);
+    const rest = newOffers.filter(o => !isPriorityClothing(o)).sort((a, b) => b.discount - a.discount);
 
     // Pega até 3x o limite para compensar descartes por gênero
     const clothingQuota = Math.ceil(maxPerCycle / 2) * 3;

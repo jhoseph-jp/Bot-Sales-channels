@@ -22,9 +22,20 @@ const ML_LOGO = 'https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui
 // Targets de scraping
 // ─────────────────────────────────────────────
 
-const FEMININE_CATEGORY_TABS = [
-  'moda', 'calçados', 'calcados', 'beleza', 'joias', 'bijuteria', 'cozinha',
-];
+// Categorias de moda/calçados/acessórios têm URL direta e ordem de prioridade fixa —
+// MLB1430 (Calçados, Roupas e Bolsas) é a principal, depois Camisetas e Regatas,
+// Calças, Tênis e Acessórios, nessa ordem. Isso substitui a busca antiga por abas de
+// texto ("moda", "calçados") que dependia do layout da página de ofertas.
+const CLOTHING_CATEGORY_TARGETS = [
+  { id: 'MLB1430',   label: 'Calçados, Roupas e Bolsas', priority: 1 },
+  { id: 'MLB31447',  label: 'Camisetas e Regatas',        priority: 2 },
+  { id: 'MLB188065', label: 'Calças',                     priority: 3 },
+  { id: 'MLB23332',  label: 'Tênis',                      priority: 4 },
+  { id: 'MLB1451',   label: 'Acessórios',                 priority: 5 },
+].map(c => ({ ...c, url: `https://www.mercadolivre.com.br/ofertas?category=${c.id}&container_id=MLB779362-1` }));
+
+// Demais nichos femininos — continuam localizados via aba de texto na página de ofertas
+const FEMININE_CATEGORY_TABS = ['beleza', 'joias', 'bijuteria', 'cozinha'];
 
 const OFFER_TARGET = {
   url: 'https://www.mercadolivre.com.br/ofertas',
@@ -296,7 +307,7 @@ class MercadoLivreService {
       // MD5 (ou pior: casava um MLB\d+ de tracking dentro do próprio fragmento).
       const mlbMatch = cleanLink.match(/MLB-?\d+/i);
       const id = mlbMatch ? mlbMatch[0].replace(/-/g, '').toUpperCase() : crypto.createHash('md5').update(`${raw.title}-${currentPrice}`).digest('hex');
-      offers.push({ id, title: raw.title, price: currentPrice, originalPrice: originalPrice > 0 ? originalPrice : currentPrice, discount, link: cleanLink, image: raw.image, coupon, category: label, emoji, isFlash: target.isFlash });
+      offers.push({ id, title: raw.title, price: currentPrice, originalPrice: originalPrice > 0 ? originalPrice : currentPrice, discount, link: cleanLink, image: raw.image, coupon, category: label, emoji, isFlash: target.isFlash, categoryPriority: raw._categoryPriority });
     }
     return offers;
   }
@@ -318,6 +329,29 @@ class MercadoLivreService {
       await page.waitForTimeout(2000);
 
       if (target.useCategoryNav) {
+        const allRaw = [];
+
+        // 1) Moda/calçados/acessórios — URLs diretas, ordem de prioridade fixa
+        //    (MLB1430 principal → Camisetas e Regatas → Calças → Tênis → Acessórios)
+        for (const cat of CLOTHING_CATEGORY_TARGETS) {
+          try {
+            await page.goto(cat.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+            await page.waitForSelector('.poly-card', { timeout: 10000 }).catch(() => {});
+            await page.waitForTimeout(1500);
+            await this._scrollToLoadMore(page);
+            const raw = await this._extractRawOffers(page);
+            raw.forEach(r => { r._fromFeminineCategory = true; r._categoryPriority = cat.priority; });
+            allRaw.push(...raw);
+            logger.info(`[Scraper] ${cat.label} (prioridade ${cat.priority}): ${raw.length} cards`);
+          } catch (err) {
+            logger.debug(`[Scraper] Erro ${cat.label}: ${err.message}`);
+          }
+          await new Promise(r => setTimeout(r, 1500));
+        }
+
+        // 2) Demais nichos femininos — localizados via aba de texto na página de ofertas
+        await page.goto(target.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForTimeout(1500);
         const categoryLinks = await page.evaluate((tabs) => {
           const seen = new Set();
           const links = [];
@@ -333,31 +367,29 @@ class MercadoLivreService {
 
         logger.info(`[Scraper] Abas: ${categoryLinks.map(l => l.text).join(', ') || 'nenhuma'}`);
 
-        if (categoryLinks.length > 0) {
-          const allRaw = [];
-          for (const link of categoryLinks.slice(0, 8)) {
-            try {
-              await page.goto(link.href, { waitUntil: 'domcontentloaded', timeout: 20000 });
-              await page.waitForSelector('.poly-card', { timeout: 10000 }).catch(() => {});
-              await page.waitForTimeout(1500);
-              await this._scrollToLoadMore(page);
-              const raw = await this._extractRawOffers(page);
-              raw.forEach(r => { r._fromFeminineCategory = true; });
-              allRaw.push(...raw);
-              logger.info(`[Scraper] ${link.text}: ${raw.length} cards`);
-            } catch (err) {
-              logger.debug(`[Scraper] Erro ${link.text}: ${err.message}`);
-            }
-            await new Promise(r => setTimeout(r, 1500));
+        for (const link of categoryLinks.slice(0, 8)) {
+          try {
+            await page.goto(link.href, { waitUntil: 'domcontentloaded', timeout: 20000 });
+            await page.waitForSelector('.poly-card', { timeout: 10000 }).catch(() => {});
+            await page.waitForTimeout(1500);
+            await this._scrollToLoadMore(page);
+            const raw = await this._extractRawOffers(page);
+            raw.forEach(r => { r._fromFeminineCategory = true; });
+            allRaw.push(...raw);
+            logger.info(`[Scraper] ${link.text}: ${raw.length} cards`);
+          } catch (err) {
+            logger.debug(`[Scraper] Erro ${link.text}: ${err.message}`);
           }
-          if (allRaw.length > 0) {
-            const offers = this._processRawOffers(allRaw, target);
-            logger.info(`[Scraper] ${target.label}: ${offers.length} femininas ≥${settings.minDiscount}%`);
-            return offers;
-          }
-          await page.goto(target.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          await page.waitForTimeout(1500);
+          await new Promise(r => setTimeout(r, 1500));
         }
+
+        if (allRaw.length > 0) {
+          const offers = this._processRawOffers(allRaw, target);
+          logger.info(`[Scraper] ${target.label}: ${offers.length} femininas ≥${settings.minDiscount}%`);
+          return offers;
+        }
+        await page.goto(target.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForTimeout(1500);
       }
 
       await page.waitForSelector('.poly-card', { timeout: 15000 }).catch(() => {});
