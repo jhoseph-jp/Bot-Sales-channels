@@ -3,9 +3,9 @@ const { settings } = require('./config/env');
 const logger = require('./utils/logger');
 const db = require('./repositories/database');
 const mlService = require('./services/mercadoLivreService');
+const shopeeService = require('./services/shopeeService');
 const telegramService = require('./services/telegramService');
 const couponListener = require('./services/couponListener');
-const cuponomiaScraper = require('./services/cuponomiaScraper');
 const { isRelevantForAudience } = require('./utils/couponAudience');
 const instagramService = require('./services/instagramService');
 const whatsappService = require('./services/whatsappService');
@@ -14,12 +14,25 @@ const whatsappService = require('./services/whatsappService');
 // no .env. Vazio (padrão) = sync desligado — útil rodando local sem servidor do site.
 const WEBSITE_SYNC_CMD = settings.websiteSyncCmd;
 
-const OFFER_INTERVAL_MS  = 1800000;  // 30 min — ofertas do dia
+const OFFER_INTERVAL_MS  = 4500000;  // 75 min — ofertas do dia
 const FLASH_INTERVAL_MS  =  600000;  // 10 min — relâmpago
 const COUPON_INTERVAL_MS = 3600000;  // 60 min — cupons de canais Telegram
+const SHOPEE_INTERVAL_MS = 4500000;  // 75 min — ofertas Shopee (nicho feminino)
 
-const MAX_OFFERS_PER_CYCLE = 8;      // máx por ciclo diário
-const MAX_FLASH_PER_CYCLE  = 5;      // máx por ciclo relâmpago
+// Lote de 5 a 7 por ciclo, sorteado a cada rodada, pra não sair sempre o mesmo número.
+const MIN_PER_CYCLE = 5;
+const MAX_PER_CYCLE = 7;
+const MAX_FLASH_PER_CYCLE = 5;       // máx por ciclo relâmpago
+
+// Espaçamento entre as ofertas de um mesmo lote. Sem isso o lote inteiro cai no grupo
+// em poucos segundos (a fila dos services envia de 1,5s em 1,5s) e parece spam.
+// Não vale pro relâmpago, que é tempo-sensível e sai assim que encontrado.
+const SPACING_MIN_MS = 60000;        // 1 min
+const SPACING_MAX_MS = 180000;       // 3 min
+
+const randBetween = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
+const offersPerCycle = () => randBetween(MIN_PER_CYCLE, MAX_PER_CYCLE);
+const spacingDelay = () => randBetween(SPACING_MIN_MS, SPACING_MAX_MS);
 
 class BotApp {
   constructor() {
@@ -34,8 +47,9 @@ class BotApp {
       this.runOfferCycle();
       this.runFlashCycle();
       this.runCouponCycle();
+      this.runShopeeCycle();
 
-      logger.info(`Bot iniciado. Ofertas: 30 min (max ${MAX_OFFERS_PER_CYCLE}) | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE}) | Cupons: 60 min | Categorias: ${['moda','calçados','beleza','esportes','acessórios','joias'].join(', ')}`);
+      logger.info(`Bot iniciado. Ofertas ML e Shopee: ${MIN_PER_CYCLE}-${MAX_PER_CYCLE} a cada 75 min, espaçadas de 1-3 min | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE}, imediato) | Cupons: 60 min | Categorias: ${['moda','calçados','beleza','esportes','acessórios','joias'].join(', ')}`);
     } catch (err) {
       logger.error('Erro fatal ao iniciar:', err.message);
       process.exit(1);
@@ -43,14 +57,21 @@ class BotApp {
   }
 
   // ─────────────────────────────────────────────
-  // Ciclo Ofertas do Dia — 30 min, max 5
+  // Ciclo Ofertas do Dia — 75 min, lote de 5-7 espaçadas de 1-3 min
   // ─────────────────────────────────────────────
 
   async runOfferCycle() {
     if (!this.isRunning) return;
+    const espera = await this._faltaPara('last_offer_cycle', OFFER_INTERVAL_MS);
+    if (espera > 0) {
+      logger.info(`[Ofertas do Dia] Ciclo recente — próximo em ${Math.round(espera / 60000)} min.`);
+      setTimeout(() => this.runOfferCycle(), espera);
+      return;
+    }
     try {
+      await db.setConfig('last_offer_cycle', String(Date.now()));
       const offers = await mlService.getDailyOffers();
-      const sent = await this._processOffers(offers, MAX_OFFERS_PER_CYCLE, false);
+      const sent = await this._processOffers(offers, offersPerCycle(), false, true);
       logger.info(`[Ofertas do Dia] ${sent} novas enviadas.`);
       if (sent > 0) this._syncWebsite();
     } catch (err) {
@@ -61,7 +82,8 @@ class BotApp {
   }
 
   // ─────────────────────────────────────────────
-  // Ciclo Relâmpago — 10 min, max 3, com timer
+  // Ciclo Relâmpago — 10 min, max 5, com timer. Sem espaçamento e sem trava de restart:
+  // oferta relâmpago é tempo-sensível e deve sair assim que encontrada.
   // ─────────────────────────────────────────────
 
   async runFlashCycle() {
@@ -85,108 +107,115 @@ class BotApp {
   async runCouponCycle() {
     if (!this.isRunning) return;
     try {
-      // Busca de três fontes em paralelo: cuponomia (mais estruturado) + canais Telegram + página ML
-      const [cuponomiaCoupons, listenerCoupons, mlCoupons] = await Promise.all([
-        cuponomiaScraper.getCoupons().catch(() => []),
-        couponListener.getCoupons().catch(() => []),
-        mlService.getCoupons().catch(() => []),
-      ]);
+      // Fonte única: canais do Telegram listados em COUPON_CHANNELS (.env).
+      //
+      // A cuponomia foi removida: trazia volume alto de cupom genérico de checkout do ML
+      // sem nenhuma relação com o nicho feminino, e não havia como separar o que servia ao
+      // canal (cupom genérico não tem produto nem categoria pra filtrar). A página /cupons
+      // do ML também saiu — em 423 ciclos ela nunca devolveu um único código, só gastava
+      // uma sessão do Playwright por hora.
+      const listenerCoupons = await couponListener.getCoupons().catch(() => []);
 
-      // Mapa código → discountText do ML (fonte mais confiável para %desconto quando falta)
-      const mlDiscountMap = new Map(mlCoupons.map(c => [c.code, c.discountText]));
+      // store já vem do couponListener (ml ou shopee)
+      const allCoupons = listenerCoupons.map(c => ({
+        ...c,
+        source: 'listener',
+        discount: c.discount ?? null,
+        minimum: c.minimum ?? null,
+        limit: c.limit ?? null,
+      }));
 
-      // Cada fonte só pode ser confirmada/revalidada contra ela mesma — a página de
-      // cupons do ML NUNCA lista os códigos genéricos de terceiros da cuponomia (são
-      // catálogos diferentes), então cruzar cuponomia contra mlCodes sempre falha (ou,
-      // pior, quando o scrape do ML cai — comum, ML bloqueia bot de IP de VPS — a
-      // checagem inteira era pulada e cupons ficavam "presos" ativos pra sempre. Por
-      // isso cada fonte é seu próprio ground-truth.
-      const mlCodes = new Set(mlCoupons.map(c => c.code));
-      const cuponomiaCodes = new Set(cuponomiaCoupons.map(c => c.code));
-
-      const taggedCuponomia = cuponomiaCoupons.map(c => ({ ...c, source: 'cuponomia' }));
-      const taggedListener  = listenerCoupons.map(c => ({ ...c, source: 'listener', discount: c.discount ?? null, minimum: c.minimum ?? null, limit: c.limit ?? null }));
-      const taggedMl        = mlCoupons.map(c => ({ ...c, source: 'ml', discount: c.discount ?? null, minimum: c.minimum ?? null, limit: c.limit ?? null }));
-
-      // Merge: cuponomia tem prioridade (campos numéricos mais confiáveis),
-      // depois soma exclusivos do listener e da página ML.
-      const allCoupons = [...taggedCuponomia];
-      for (const source of [taggedListener, taggedMl]) {
-        for (const c of source) {
-          if (!allCoupons.some(existing => existing.code === c.code)) {
-            allCoupons.push(c);
-          }
-        }
-      }
-
-      // Confirma um cupom contra a fonte que pode atestar sua validade. cuponomia e
-      // ml são confiadas ao ingerir (acabaram de ser raspadas frescas agora); listener
-      // (canais Telegram) é terceiro não-oficial reivindicando cupom do ML, então
-      // precisa aparecer na página real do ML pra ser confirmado.
-      function isVerified(coupon) {
-        if (coupon.source === 'listener') {
-          return mlCoupons.length === 0 || mlCodes.has(coupon.code); // sem dado do ML: não bloqueia
-        }
-        return true; // cuponomia/ml: a própria presença no scrape desse ciclo já confirma
-      }
-
+      // Sem segunda fonte não há cross-check de validade. Na prática já não havia: a
+      // conferência do listener era contra a página do ML, que voltava sempre vazia e
+      // caía na exceção "sem dado do ML: não bloqueia". O que garante a qualidade agora
+      // é a extração exigir código anunciado explicitamente (ver couponListener.js) mais
+      // o filtro de nicho, e o TTL abaixo como validade máxima.
       const newCoupons = [];
+      const seenNow = new Set();
       let filtered = 0;
-      let unverified = 0;
+      let reavaliados = 0;
       for (const coupon of allCoupons) {
-        if (await db.isCouponProcessed(coupon.id)) continue;
+        seenNow.add(coupon.id);
 
-        // Enriquece com discountText do ML quando ainda não tem %
-        if (!coupon.discount && mlDiscountMap.has(coupon.code)) {
-          coupon.discountText = mlDiscountMap.get(coupon.code);
+        // Cupom já visto antes: em vez de pular pra sempre, reavalia contra o contexto
+        // NOVO em que ele reapareceu. Código genérico do ML é anunciado junto de produtos
+        // diferentes — visto primeiro numa furadeira ele era barrado e ficava queimado pra
+        // sempre, mesmo voltando depois anunciado com um vestido.
+        //
+        // A description guardada diz em que contexto ele foi visto da última vez, então
+        // ela mesma distingue os dois casos, sem precisar de coluna nova: se aquele
+        // contexto REPROVA no filtro, o cupom foi barrado por nicho e merece nova chance;
+        // se APROVA, é porque já foi publicado e não pode repetir no canal.
+        const existing = await db.getCoupon(coupon.id);
+        if (existing) {
+          const foraDoNichoAntes = !isRelevantForAudience(existing);
+          const passaAgora = isRelevantForAudience(coupon);
+          if (!foraDoNichoAntes || !passaAgora) continue;
+          reavaliados++;
         }
 
         // Fora do público-alvo (veículos, construção, pet, infantil...) — salva como
-        // inativo só pra não reprocessar, mas não entra na mensagem nem vira cupom ativo.
+        // inativo pra registrar que foi visto; se reaparecer num contexto do nicho, o
+        // bloco acima o reconsidera.
         if (!isRelevantForAudience(coupon)) {
           await db.saveCoupon({ ...coupon, discountText: coupon.discountText || '', isActive: false });
           filtered++;
           continue;
         }
 
-        if (!isVerified(coupon)) {
-          await db.saveCoupon({ ...coupon, discountText: coupon.discountText || '', isActive: false });
-          unverified++;
-          continue;
-        }
-
         await db.saveCoupon({ ...coupon, discountText: coupon.discountText || '', isActive: true });
         newCoupons.push(coupon);
-        logger.info(`Novo cupom: ${coupon.code}${coupon.discount ? ` (${coupon.discount}% OFF)` : coupon.discountText ? ` (${coupon.discountText})` : ''}`);
+        logger.info(`${existing ? 'Cupom reavaliado e liberado' : 'Novo cupom'}: ${coupon.code}${coupon.discount ? ` (${coupon.discount}% OFF)` : coupon.discountText ? ` (${coupon.discountText})` : ''}`);
       }
       if (filtered > 0) logger.info(`[Cupons] ${filtered} filtrado(s) (fora do público-alvo).`);
-      if (unverified > 0) logger.info(`[Cupons] ${unverified} não confirmado(s) na fonte de origem.`);
+      if (reavaliados > 0) logger.info(`[Cupons] ${reavaliados} liberado(s) na reavaliação (reapareceu em contexto do nicho).`);
 
-      // Revalida cupons já ativos contra a fonte que os originou: se sumiram desse
-      // ciclo, provavelmente expiraram — desativa pra não serem mais enviados/ofertados.
+      // Revalidação dos já ativos. O feed do canal é uma linha do tempo rolante: sumir do
+      // scrape não quer dizer que expirou, só que a mensagem saiu da janela visível — por
+      // isso NÃO se desativa por ausência. Quem ainda aparece tem o last_checked renovado
+      // (segue vivo), e quem saiu do feed morre pelo TTL de 72h abaixo.
       const stillActive = await db.getActiveCoupons();
-      let deactivated = 0;
+      let dropped = 0;
+      let refreshed = 0;
       for (const c of stillActive) {
-        if (c.source === 'cuponomia' && cuponomiaCoupons.length > 0 && !cuponomiaCodes.has(c.code)) {
+        // Reaplica o filtro de público-alvo nos que já estavam ativos: quando o filtro
+        // fica mais estrito, cupom fora de escopo aprovado antes continuaria ativo (e
+        // visível no site) pra sempre, porque o laço acima só olha o que veio no scrape.
+        if (!isRelevantForAudience(c)) {
           await db.updateCouponStatus(c.id, false);
-          deactivated++;
-        } else if (c.source !== 'cuponomia' && mlCoupons.length > 0 && !mlCodes.has(c.code)) {
-          await db.updateCouponStatus(c.id, false);
-          deactivated++;
+          dropped++;
+          continue;
+        }
+        if (seenNow.has(c.id)) {
+          await db.updateCouponStatus(c.id, true);   // renova last_checked, adiando o TTL
+          refreshed++;
         }
       }
-      if (deactivated > 0) logger.info(`[Cupons] ${deactivated} desativado(s) (não encontrados mais na fonte de origem).`);
+      if (dropped > 0) logger.info(`[Cupons] ${dropped} desativado(s) (fora do público-alvo pelo filtro atual).`);
+      if (refreshed > 0) logger.info(`[Cupons] ${refreshed} renovado(s) (ainda no feed do canal).`);
 
-      // Trava de segurança: se as raspagens ficarem fora do ar por dias seguidos, um
-      // cupom ativo nunca revalidado se auto-expira em vez de ficar preso pra sempre.
+      // Validade máxima: cupom que saiu do feed do canal (ou canal fora do ar) expira em
+      // 72h sem renovação, em vez de ficar preso ativo pra sempre. Com fonte única, esse
+      // TTL é o principal mecanismo de expiração.
       const stale = await db.deactivateStaleCoupons(72);
-      if (stale.changes > 0) logger.info(`[Cupons] ${stale.changes} desativado(s) por TTL (72h sem revalidação).`);
+      if (stale.changes > 0) logger.info(`[Cupons] ${stale.changes} desativado(s) por TTL (72h sem renovação).`);
 
       if (newCoupons.length > 0) {
-        const genericLink = await mlService.buildAffiliateLink('https://www.mercadolivre.com.br/ofertas')
-          .catch(() => null) || 'https://www.mercadolivre.com.br/cupons';
-        telegramService.enqueueCouponBatch(newCoupons, genericLink);
-        whatsappService.enqueueCouponBatch(newCoupons, genericLink);
+        // Envio separado por loja — um cupom Shopee jamais deve sair com marca/link do ML
+        // (e vice-versa). A detecção de loja acontece na origem, em couponListener.js.
+        const mlNew = newCoupons.filter(c => c.store !== 'shopee');
+        const shopeeNew = newCoupons.filter(c => c.store === 'shopee');
+
+        if (mlNew.length > 0) {
+          const genericLink = await mlService.buildAffiliateLink('https://www.mercadolivre.com.br/ofertas')
+            .catch(() => null) || 'https://www.mercadolivre.com.br/cupons';
+          telegramService.enqueueCouponBatch(mlNew, genericLink, 'ml');
+          whatsappService.enqueueCouponBatch(mlNew, genericLink, 'ml');
+        }
+        if (shopeeNew.length > 0) {
+          telegramService.enqueueCouponBatch(shopeeNew, 'https://shopee.com.br', 'shopee');
+          whatsappService.enqueueCouponBatch(shopeeNew, 'https://shopee.com.br', 'shopee');
+        }
       }
 
       logger.info(`[Cupons] ${newCoupons.length} novo(s) enviado(s).`);
@@ -198,10 +227,69 @@ class BotApp {
   }
 
   // ─────────────────────────────────────────────
+  // Ciclo Shopee — 75 min, lote de 5-7 espaçadas de 1-3 min (API oficial de afiliados)
+  // ─────────────────────────────────────────────
+
+  async runShopeeCycle() {
+    if (!this.isRunning) return;
+    if (!shopeeService.isEnabled) {
+      setTimeout(() => this.runShopeeCycle(), SHOPEE_INTERVAL_MS);
+      return;
+    }
+    const espera = await this._faltaPara('last_shopee_cycle', SHOPEE_INTERVAL_MS);
+    if (espera > 0) {
+      logger.info(`[Shopee] Ciclo recente — próximo em ${Math.round(espera / 60000)} min.`);
+      setTimeout(() => this.runShopeeCycle(), espera);
+      return;
+    }
+    try {
+      await db.setConfig('last_shopee_cycle', String(Date.now()));
+      const products = await shopeeService.getNicheProducts();
+      const sent = await this._processShopeeOffers(products, offersPerCycle());
+      logger.info(`[Shopee] ${sent} novas enviadas.`);
+      if (sent > 0) this._syncWebsite();
+    } catch (err) {
+      logger.error('[Shopee] Erro:', err.message);
+    } finally {
+      setTimeout(() => this.runShopeeCycle(), SHOPEE_INTERVAL_MS);
+    }
+  }
+
+  // Shopee já entrega link de afiliado pronto (offerLink) e desconto calculado —
+  // dispensa a checagem de gênero (keywords de busca já são femininas) e a
+  // montagem de link afiliado que o fluxo do ML precisa.
+  async _processShopeeOffers(offers, maxPerCycle) {
+    const newOffers = [];
+    for (const offer of offers) {
+      if (!offer.discount || offer.discount <= 0) continue;
+      const dup = await db.isOfferProcessed(offer.id);
+      if (!dup) newOffers.push(offer);
+    }
+
+    const candidates = newOffers.sort((a, b) => b.discount - a.discount).slice(0, maxPerCycle);
+
+    let sent = 0;
+    for (const offer of candidates) {
+      const saved = await db.saveOffer(offer);
+      if (!saved) continue;
+      await telegramService.enqueueOffer(offer);
+      instagramService.enqueueOffer(offer);
+      whatsappService.enqueueOffer(offer);
+      sent++;
+      logger.info(`Nova oferta Shopee: ${offer.discount}% OFF | ${offer.title.substring(0, 50)}`);
+
+      if (sent < maxPerCycle) {
+        await new Promise(r => setTimeout(r, spacingDelay()));
+      }
+    }
+    return sent;
+  }
+
+  // ─────────────────────────────────────────────
   // Processamento comum de ofertas
   // ─────────────────────────────────────────────
 
-  async _processOffers(offers, maxPerCycle, fetchTimer) {
+  async _processOffers(offers, maxPerCycle, fetchTimer, spreadSends = false) {
     const newOffers = [];
     for (const offer of offers) {
       const dup = await db.isOfferProcessed(offer.id) || await db.isOfferUrlProcessed(offer.link);
@@ -256,9 +344,24 @@ class BotApp {
       sent++;
 
       logger.info(`Nova oferta: ${offer.discount}% OFF | ${offer.category} | ${offer.title.substring(0, 50)}`);
+
+      if (spreadSends && sent < maxPerCycle) {
+        await new Promise(r => setTimeout(r, spacingDelay()));
+      }
     }
 
     return sent;
+  }
+
+  // Quanto falta pro ciclo poder rodar de novo (0 = pode agora). O timestamp do último
+  // ciclo fica na tabela config, então sobrevive a restart: sem isso todo `pm2 restart`
+  // disparava um lote extra na hora — num dia de vários deploys o grupo levava rajada
+  // atrás de rajada. Não se aplica ao relâmpago, que deve mesmo sair assim que achado.
+  async _faltaPara(chave, intervalo) {
+    const ultimo = parseInt(await db.getConfig(chave) || '0', 10);
+    if (!ultimo) return 0;
+    const decorrido = Date.now() - ultimo;
+    return decorrido >= intervalo ? 0 : intervalo - decorrido;
   }
 
   _syncWebsite() {
