@@ -51,6 +51,7 @@ class Database {
         max_discount  TEXT,
         is_active     INTEGER DEFAULT 1,
         source        TEXT,
+        store         TEXT,
         last_checked  DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `;
@@ -71,6 +72,7 @@ class Database {
         `ALTER TABLE coupons ADD COLUMN minimum TEXT`,
         `ALTER TABLE coupons ADD COLUMN max_discount TEXT`,
         `ALTER TABLE coupons ADD COLUMN source TEXT`,
+        `ALTER TABLE coupons ADD COLUMN store TEXT`,
       ];
       migrations.forEach(sql => this.db.run(sql, () => {}));
     });
@@ -164,10 +166,16 @@ class Database {
     return !!row;
   }
 
+  // Registro completo — usado pra reavaliar um cupom já visto contra o contexto novo
+  // em que ele reapareceu (ver runCouponCycle).
+  async getCoupon(id) {
+    return this.get('SELECT * FROM coupons WHERE id = ?', [id]);
+  }
+
   async saveCoupon(coupon) {
     const sql = `
-      INSERT OR REPLACE INTO coupons (id, code, description, category, discount_text, link, discount, minimum, max_discount, is_active, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO coupons (id, code, description, category, discount_text, link, discount, minimum, max_discount, is_active, source, store)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     return this.run(sql, [
       coupon.id,
@@ -181,6 +189,7 @@ class Database {
       coupon.maxDiscount || null,
       coupon.isActive ? 1 : 0,
       coupon.source || null,
+      coupon.store || 'ml',
     ]);
   }
 

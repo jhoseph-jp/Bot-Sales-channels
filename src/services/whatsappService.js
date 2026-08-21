@@ -16,6 +16,12 @@ const PriceCalculator = require('../utils/priceCalculator');
 const ML_LOGO_URL = 'https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadolibre/logo__large_plus.png';
 const ML_LOGO_LOCAL = path.resolve(process.cwd(), 'data', 'ml_logo.jpg');
 
+// Mesma separação por loja do telegramService.js — nunca reaproveitar rótulo/link
+// de uma loja pra outra. Sem logo dedicada pra Shopee: manda foto só pro ML.
+const STORE_LABEL = { ml: 'CUPOM MERCADO LIVRE', shopee: 'CUPOM SHOPEE' };
+const STORE_BATCH_LABEL = { ml: 'Novo Cupom Mercado Livre!', shopee: 'Novo Cupom Shopee!' };
+const STORE_FALLBACK_LINK = { ml: 'mercadolivre.com.br', shopee: 'shopee.com.br' };
+
 // Baileys usa seu próprio logger (pino). Silenciamos para não poluir os logs do bot.
 const waLogger = pino({ level: 'silent' });
 
@@ -89,7 +95,7 @@ class WhatsAppService {
     while (this.queue.length > 0 && this.isReady) {
       const { type, data } = this.queue.shift();
       try {
-        if (type === 'couponBatch') await this.sendCouponBatchMessage(data.coupons, data.link);
+        if (type === 'couponBatch') await this.sendCouponBatchMessage(data.coupons, data.link, data.store);
         else if (type === 'coupon') await this.sendCouponMessage(data);
         else await this.sendOfferMessage(data);
         await new Promise(r => setTimeout(r, 1500));
@@ -112,9 +118,9 @@ class WhatsAppService {
     this.processQueue();
   }
 
-  enqueueCouponBatch(coupons, link) {
+  enqueueCouponBatch(coupons, link, store = 'ml') {
     if (!this.groupId) return;
-    this.queue.push({ type: 'couponBatch', data: { coupons, link } });
+    this.queue.push({ type: 'couponBatch', data: { coupons, link, store } });
     this.processQueue();
   }
 
@@ -177,10 +183,15 @@ class WhatsAppService {
   // ─────────────────────────────────────────────
 
   async sendCouponMessage(coupon) {
-    let msg = `🏷️ *CUPOM MERCADO LIVRE*\n\n`;
+    const store = coupon.store === 'shopee' ? 'shopee' : 'ml';
+    let msg = `🏷️ *${STORE_LABEL[store]}*\n\n`;
     msg += `📋 Código: \`\`\`${coupon.code}\`\`\`\n`;   // WhatsApp: monoespaçado = ```
     if (coupon.discount) {
       msg += `📉 *${coupon.discount}% OFF*`;
+      if (coupon.minimum) msg += ` em compras acima de *${coupon.minimum}*`;
+      msg += `\n`;
+    } else if (coupon.amount) {
+      msg += `📉 *${coupon.amount} OFF*`;
       if (coupon.minimum) msg += ` em compras acima de *${coupon.minimum}*`;
       msg += `\n`;
     } else if (coupon.discountText) {
@@ -188,18 +199,21 @@ class WhatsAppService {
     }
     if (coupon.limit) msg += `⚠️ Limite de ${coupon.limit} usos\n`;
     msg += `\n✅ Copie o código e aplique no checkout!\n\n`;
-    msg += `🛒 mercadolivre.com.br`;
+    msg += `🛒 ${coupon.link || STORE_FALLBACK_LINK[store]}`;
 
-    const image = fs.existsSync(ML_LOGO_LOCAL)
-      ? { url: ML_LOGO_LOCAL }
-      : { url: ML_LOGO_URL };
-
-    try {
-      await this._sendWithRetry({ image, caption: msg });
-    } catch (err) {
-      logger.debug(`[WA] Foto cupom falhou, enviando texto: ${err.message}`);
-      await this._sendWithRetry({ text: msg });
+    if (store === 'ml') {
+      const image = fs.existsSync(ML_LOGO_LOCAL)
+        ? { url: ML_LOGO_LOCAL }
+        : { url: ML_LOGO_URL };
+      try {
+        await this._sendWithRetry({ image, caption: msg });
+        return;
+      } catch (err) {
+        logger.debug(`[WA] Foto cupom falhou, enviando texto: ${err.message}`);
+      }
     }
+
+    await this._sendWithRetry({ text: msg });
   }
 
   // ─────────────────────────────────────────────
@@ -209,7 +223,7 @@ class WhatsAppService {
   _groupCoupons(coupons) {
     const groups = new Map();
     for (const c of coupons) {
-      const key = `${c.discount || ''}|${c.minimum || ''}|${c.maxDiscount || ''}|${c.discountText || ''}`;
+      const key = `${c.discount || ''}|${c.amount || ''}|${c.minimum || ''}|${c.maxDiscount || ''}|${c.discountText || ''}`;
       if (!groups.has(key)) groups.set(key, { ...c, codes: [] });
       groups.get(key).codes.push(c.code);
     }
@@ -223,6 +237,10 @@ class WhatsAppService {
       if (g.minimum) line += ` em compras acima de ${g.minimum}`;
       if (g.maxDiscount) line += `, limitado a ${g.maxDiscount}`;
       line += `\n`;
+    } else if (g.amount) {
+      line += `➖ *${g.amount} OFF*`;
+      if (g.minimum) line += ` em compras acima de ${g.minimum}`;
+      line += `\n`;
     } else if (g.discountText) {
       line += `➖ *${g.discountText}*\n`;
     } else {
@@ -233,8 +251,8 @@ class WhatsAppService {
   }
 
   // Divide os grupos em páginas pra não estourar o limite de legenda
-  _paginateCouponGroups(groups, link) {
-    const HEADER = `🔥 *Novo Cupom Mercado Livre!*\n\n`;
+  _paginateCouponGroups(groups, link, store) {
+    const HEADER = `🔥 *${STORE_BATCH_LABEL[store]}*\n\n`;
     const FOOTER = `🔗 ${link}`;
     const MAX_LEN = 950;
 
@@ -252,22 +270,25 @@ class WhatsAppService {
     return pages;
   }
 
-  async sendCouponBatchMessage(coupons, link) {
+  async sendCouponBatchMessage(coupons, link, store = 'ml') {
     if (!coupons || coupons.length === 0) return;
     const groups = this._groupCoupons(coupons);
-    const pages = this._paginateCouponGroups(groups, link);
+    const pages = this._paginateCouponGroups(groups, link, store);
 
     for (const msg of pages) {
-      const image = fs.existsSync(ML_LOGO_LOCAL)
-        ? { url: ML_LOGO_LOCAL }
-        : { url: ML_LOGO_URL };
-
-      try {
-        await this._sendWithRetry({ image, caption: msg });
-      } catch (err) {
-        logger.debug(`[WA] Foto cupons (lote) falhou, enviando texto: ${err.message}`);
-        await this._sendWithRetry({ text: msg });
+      if (store === 'ml') {
+        const image = fs.existsSync(ML_LOGO_LOCAL)
+          ? { url: ML_LOGO_LOCAL }
+          : { url: ML_LOGO_URL };
+        try {
+          await this._sendWithRetry({ image, caption: msg });
+          if (pages.length > 1) await new Promise(r => setTimeout(r, 1500));
+          continue;
+        } catch (err) {
+          logger.debug(`[WA] Foto cupons (lote) falhou, enviando texto: ${err.message}`);
+        }
       }
+      await this._sendWithRetry({ text: msg });
       if (pages.length > 1) await new Promise(r => setTimeout(r, 1500));
     }
   }

@@ -11,6 +11,10 @@ const NOT_CODES = new Set([
   'DESCONTO', 'PROMOS', 'PROMO', 'OFERTA', 'VENDA',
   'MODA', 'ESTILO', 'COMPRA', 'LOJA', 'LINK', 'ACIMA',
   'HOJE', 'AGORA', 'CONFIRA', 'APROVEITE', 'VALIDO',
+  // Nomes de loja — sem isso, "Cupom Shopee!!!" ou "Cupom Mercado Livre: ABC123"
+  // (nome logo após "cupom", sem dois-pontos) casa como se o nome da loja fosse
+  // o próprio código, roubando a vaga do código real que vem depois na mensagem.
+  'SHOPEE', 'MERCADO', 'LIVRE', 'MERCADOLIVRE',
 ]);
 
 function looksLikeCode(str) {
@@ -21,11 +25,34 @@ function looksLikeCode(str) {
   return /^[A-Z][A-Z0-9]{3,19}$/.test(s) && (/\d/.test(s) || s.length >= 6);
 }
 
+// ─────────────────────────────────────────────
+// Detecção de loja — o canal do Telegram mistura cupons de lojas diferentes
+// no mesmo feed; o texto da mensagem é o único jeito de saber de qual se trata.
+// ─────────────────────────────────────────────
+
 function isMlRelated(text) {
   return /mercado\s*livre|mercadolivre|meli\.la|\.meli\.|mlb|\bml\b/i.test(text);
 }
 
-function extractDiscount(text) {
+function isShopeeRelated(text) {
+  return /\bshopee\b|s\.shopee\.com|shope\.ee/i.test(text);
+}
+
+// ML primeiro por ser a fonte majoritária hoje; na rara mensagem que citar as
+// duas lojas, prevalece ML. Cada loja tem sua função isolada acima — dá pra
+// adicionar uma terceira loja só acrescentando outro isXRelated + um `if`.
+function detectStore(text) {
+  if (isMlRelated(text)) return 'ml';
+  if (isShopeeRelated(text)) return 'shopee';
+  return null;
+}
+
+// ─────────────────────────────────────────────
+// Extração — formato de cupom (código, %, valor fixo, mínimo, limite, link)
+// é parecido o bastante entre lojas pra compartilhar a mesma lógica.
+// ─────────────────────────────────────────────
+
+function extractPercentDiscount(text) {
   // "10% off" / "10% de desconto" / "10%off"
   const afterPct = text.match(/(\d+)\s*%\s*(?:off|de desconto|desconto)/i);
   if (afterPct) return parseInt(afterPct[1], 10);
@@ -44,14 +71,27 @@ function extractDiscount(text) {
   return null;
 }
 
+// Cupom de valor fixo em R$ ("R$10 OFF") — raro no ML (quase tudo é %),
+// comum na Shopee ("TODAS AS LOJAS R$10 OFF nas compras acima de R$40").
+function extractAmount(text) {
+  const m = text.match(/R\$\s*([\d.,]+)\s*(?:off|de desconto|desconto)/i);
+  return m ? `R$${cleanAmount(m[1])}` : null;
+}
+
 function extractMinimum(text) {
   // "acima de R$49" / "acima de R$ 49,00" / "mínimo de R$49" / "compras acima de R$49"
   const m = text.match(/(?:acima|m[ií]nimo)\s+de\s+R\$\s*([\d.,]+)/i);
-  if (m) return `R$${m[1].replace('.', ',')}`;
+  if (m) return `R$${cleanAmount(m[1])}`;
   // "em compras de R$49"
   const m2 = text.match(/compras\s+(?:de|acima\s+de)\s+R\$\s*([\d.,]+)/i);
-  if (m2) return `R$${m2[1].replace('.', ',')}`;
+  if (m2) return `R$${cleanAmount(m2[1])}`;
   return null;
+}
+
+// "99." (ponto final de frase grudado no valor) → "99" — o valor nunca termina em
+// separador, então qualquer . ou , sobrando no fim é pontuação, não parte do número.
+function cleanAmount(raw) {
+  return raw.replace(/[.,]+$/, '').replace('.', ',');
 }
 
 function extractLimit(text) {
@@ -65,21 +105,36 @@ function extractLimit(text) {
   return null;
 }
 
+// Só aceita código anunciado explicitamente ("Usem o cupom: XXXX").
+//
+// Antes havia um fallback que varria a mensagem atrás de qualquer token parecido com
+// código, e ele era a fonte de TODOS os códigos falsos publicados: "PRECINHO" (de
+// "PRECINHO!- Minibola..."), "CUIDAR" (de "PRÁTICO PRA CUIDAR DO VISUAL!"), "MICROFONE",
+// "IP68" (spec do celular). Não dá pra separar pelo formato — cupom real do ML é
+// palavra em caixa alta sem dígito também (PIPOCA, TODEBOA, MELIVIP) — mas dá pra
+// separar pela posição: post com cupom sempre diz "use o cupom X"; post sem essa
+// construção não tem cupom nenhum.
 function extractCode(text) {
-  // Prioridade 1: padrão explícito "cupom: CODE" ou "código: CODE"
-  const explicit = text.match(/(?:cupom|c[oó]digo|code|promo)\s*[:\-\s]+([A-Z0-9]{4,20})/i);
-  if (explicit) {
-    const code = explicit[1].toUpperCase();
-    if (looksLikeCode(code)) return code;
-  }
-
-  // Prioridade 2: token isolado que parece código (letras maiúsculas + números)
-  const tokens = text.match(/\b([A-Z]{2,}[0-9]{1,}[A-Z0-9]*|[A-Z]{6,20})\b/g) || [];
-  for (const token of tokens) {
-    if (looksLikeCode(token)) return token;
+  // A mensagem pode citar "cupom" mais de uma vez (ex.: "Cupom Shopee!!! ... Cupom:
+  // D31X4C0M1G0"), então percorre TODAS as ocorrências até achar um código plausível.
+  const explicitMatches = text.matchAll(/(?:cupom|c[oó]digo|code|promo)\s*[:\-\s]+([A-Za-z0-9]{4,20})/gi);
+  for (const match of explicitMatches) {
+    const raw = match[1];
+    // Código de verdade é sempre escrito em caixa alta nesses canais. Sem essa checagem
+    // a flag /i faz o próprio texto corrido virar código: "deixe o cupom pronto para
+    // usar" virava o cupom "PRONTO".
+    if (raw !== raw.toUpperCase()) continue;
+    if (looksLikeCode(raw)) return raw.toUpperCase();
   }
 
   return null;
+}
+
+// Link de resgate/uso do cupom, quando a mensagem traz um (nem sempre traz —
+// cupons ML geralmente não trazem, cupons Shopee costumam trazer "Resgate aqui").
+function extractLink(text) {
+  const m = text.match(/https?:\/\/\S+/);
+  return m ? m[0].replace(/[).,;!]+$/, '') : null;
 }
 
 class CouponListener {
@@ -106,11 +161,12 @@ class CouponListener {
       if (browser) await browser.close().catch(() => {});
     }
 
-    // Dedup por código (mesmo cupom em canais diferentes conta uma vez)
+    // Dedup por loja+código (mesmo código pode existir em lojas diferentes)
     const seen = new Set();
     return found.filter(c => {
-      if (seen.has(c.code)) return false;
-      seen.add(c.code);
+      const key = `${c.store}:${c.code}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
   }
@@ -133,15 +189,21 @@ class CouponListener {
       );
 
       for (const msg of messages) {
-        if (!isMlRelated(msg)) continue;
+        const store = detectStore(msg);
+        if (!store) continue;
+
         const code = extractCode(msg);
         if (!code) continue;
 
-        const id = crypto.createHash('md5').update(code).digest('hex').substring(0, 16);
-        const discount = extractDiscount(msg);
+        // ID inclui a loja só quando não é ML, pra não invalidar o dedup de
+        // cupons ML já salvos no banco antes dessa mudança (era md5(code)).
+        const id = crypto.createHash('md5').update(store === 'ml' ? code : `${store}-${code}`).digest('hex').substring(0, 16);
+        const discount = extractPercentDiscount(msg);
+        const amount = extractAmount(msg);
         const minimum = extractMinimum(msg);
         const limit = extractLimit(msg);
-        found.push({ id, code, description: msg.substring(0, 250), channel: channelName, discount, minimum, limit });
+        const link = extractLink(msg);
+        found.push({ id, code, store, description: msg.substring(0, 250), channel: channelName, discount, amount, minimum, limit, link });
       }
     } finally {
       await page.close().catch(() => {});
