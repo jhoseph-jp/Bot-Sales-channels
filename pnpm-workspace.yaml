@@ -1,0 +1,8 @@
+# Scripts de build (postinstall) que o pnpm só executa com autorização explícita.
+# sqlite3 precisa compilar o binding nativo — sem isso o require() no boot falha.
+# Os demais são aceleradores nativos opcionais, funcionam com fallback em JS puro.
+allowBuilds:
+  sqlite3: true
+  '@whiskeysockets/baileys': false
+  msgpackr-extract: false
+  protobufjs: false
