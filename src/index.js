@@ -31,9 +31,53 @@ const MAX_FLASH_PER_CYCLE = 5;       // máx por ciclo relâmpago
 const SPACING_MIN_MS = 60000;        // 1 min
 const SPACING_MAX_MS = 180000;       // 3 min
 
+// Madrugada (00h-06h de Brasilia): a audiencia dorme, entao ofertas comuns saem em
+// ritmo bem menor - de 75 min para 3 h, e lote de 2-3 em vez de 5-7. Na pratica cai de
+// ~5 ciclos por noite para ~2. O relambago NAO entra nessa regra: e tempo-sensivel e
+// segue no ciclo de 10 min. Cupons tambem seguem inalterados.
+const QUIET_TZ          = 'America/Sao_Paulo';
+const QUIET_START_HOUR  = 0;
+const QUIET_END_HOUR    = 6;
+const NIGHT_INTERVAL_MS = 10800000;  // 3 h
+const NIGHT_MIN_PER_CYCLE = 2;
+const NIGHT_MAX_PER_CYCLE = 3;
+
 const randBetween = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
-const offersPerCycle = () => randBetween(MIN_PER_CYCLE, MAX_PER_CYCLE);
 const spacingDelay = () => randBetween(SPACING_MIN_MS, SPACING_MAX_MS);
+
+// A VPS roda em UTC (sem TZ no .env), entao Date#getHours() daria 21h-03h de Brasilia
+// aqui — justamente o horario nobre. A hora tem que ser resolvida no fuso, explicitamente.
+function horaBrasilia(d = new Date()) {
+  const [h, m] = new Intl.DateTimeFormat('en-GB', {
+    timeZone: QUIET_TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(d).split(':').map(Number);
+  return { h, m };
+}
+
+const emMadrugada = () => {
+  const { h } = horaBrasilia();
+  return h >= QUIET_START_HOUR && h < QUIET_END_HOUR;
+};
+
+const msAteFimDaMadrugada = () => {
+  const { h, m } = horaBrasilia();
+  if (h >= QUIET_END_HOUR) return 0;
+  return ((QUIET_END_HOUR - h) * 60 - m) * 60000;
+};
+
+const offersPerCycle = () => (emMadrugada()
+  ? randBetween(NIGHT_MIN_PER_CYCLE, NIGHT_MAX_PER_CYCLE)
+  : randBetween(MIN_PER_CYCLE, MAX_PER_CYCLE));
+
+// Intervalo vigente agora — usado tanto na trava de restart (_faltaPara) quanto no reagendamento
+const intervaloVigente = (intervaloNormal) => (emMadrugada() ? NIGHT_INTERVAL_MS : intervaloNormal);
+
+// Na madrugada nao agenda alem das 06h: um ciclo iniciado 05h50 abriria um vazio de
+// 3 h entrando pela manha. Volta a checar logo apos a janela e retoma o ritmo normal.
+const proximoDelay = (intervaloNormal) => {
+  if (!emMadrugada()) return intervaloNormal;
+  return Math.min(NIGHT_INTERVAL_MS, msAteFimDaMadrugada() + 60000);
+};
 
 class BotApp {
   constructor() {
@@ -50,7 +94,7 @@ class BotApp {
       this.runCouponCycle();
       this.runShopeeCycle();
 
-      logger.info(`Bot iniciado. Ofertas ML e Shopee: ${MIN_PER_CYCLE}-${MAX_PER_CYCLE} a cada 75 min, espaçadas de 1-3 min | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE}, imediato) | Cupons: 60 min | Categorias (prioridade): Calçados/Roupas e Bolsas > Camisetas e Regatas > Calças > Tênis > Acessórios > beleza/joias/bijuteria/cozinha`);
+      logger.info(`Bot iniciado. Ofertas ML e Shopee: ${MIN_PER_CYCLE}-${MAX_PER_CYCLE} a cada 75 min, espaçadas de 1-3 min | Relâmpago: 10 min (max ${MAX_FLASH_PER_CYCLE}, imediato) | Madrugada 00h-06h BRT: 1 lote de ${NIGHT_MIN_PER_CYCLE}-${NIGHT_MAX_PER_CYCLE} a cada 3 h (relampago segue normal) | Cupons: 60 min | Categorias (prioridade): Calçados/Roupas e Bolsas > Camisetas e Regatas > Calças > Tênis > Acessórios > beleza/joias/bijuteria/cozinha`);
     } catch (err) {
       logger.error('Erro fatal ao iniciar:', err.message);
       process.exit(1);
@@ -63,7 +107,7 @@ class BotApp {
 
   async runOfferCycle() {
     if (!this.isRunning) return;
-    const espera = await this._faltaPara('last_offer_cycle', OFFER_INTERVAL_MS);
+    const espera = await this._faltaPara('last_offer_cycle', intervaloVigente(OFFER_INTERVAL_MS));
     if (espera > 0) {
       logger.info(`[Ofertas do Dia] Ciclo recente — próximo em ${Math.round(espera / 60000)} min.`);
       setTimeout(() => this.runOfferCycle(), espera);
@@ -78,7 +122,7 @@ class BotApp {
     } catch (err) {
       logger.error('[Ofertas do Dia] Erro:', err.message);
     } finally {
-      setTimeout(() => this.runOfferCycle(), OFFER_INTERVAL_MS);
+      setTimeout(() => this.runOfferCycle(), proximoDelay(OFFER_INTERVAL_MS));
     }
   }
 
@@ -237,7 +281,7 @@ class BotApp {
       setTimeout(() => this.runShopeeCycle(), SHOPEE_INTERVAL_MS);
       return;
     }
-    const espera = await this._faltaPara('last_shopee_cycle', SHOPEE_INTERVAL_MS);
+    const espera = await this._faltaPara('last_shopee_cycle', intervaloVigente(SHOPEE_INTERVAL_MS));
     if (espera > 0) {
       logger.info(`[Shopee] Ciclo recente — próximo em ${Math.round(espera / 60000)} min.`);
       setTimeout(() => this.runShopeeCycle(), espera);
@@ -252,7 +296,7 @@ class BotApp {
     } catch (err) {
       logger.error('[Shopee] Erro:', err.message);
     } finally {
-      setTimeout(() => this.runShopeeCycle(), SHOPEE_INTERVAL_MS);
+      setTimeout(() => this.runShopeeCycle(), proximoDelay(SHOPEE_INTERVAL_MS));
     }
   }
 
