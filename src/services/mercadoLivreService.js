@@ -307,7 +307,7 @@ class MercadoLivreService {
       // MD5 (ou pior: casava um MLB\d+ de tracking dentro do próprio fragmento).
       const mlbMatch = cleanLink.match(/MLB-?\d+/i);
       const id = mlbMatch ? mlbMatch[0].replace(/-/g, '').toUpperCase() : crypto.createHash('md5').update(`${raw.title}-${currentPrice}`).digest('hex');
-      offers.push({ id, title: raw.title, price: currentPrice, originalPrice: originalPrice > 0 ? originalPrice : currentPrice, discount, link: cleanLink, image: raw.image, coupon, category: label, emoji, isFlash: target.isFlash, categoryPriority: raw._categoryPriority });
+      offers.push({ id, store: 'ml', title: raw.title, price: currentPrice, originalPrice: originalPrice > 0 ? originalPrice : currentPrice, discount, link: cleanLink, image: raw.image, coupon, category: label, emoji, isFlash: target.isFlash, categoryPriority: raw._categoryPriority });
     }
     return offers;
   }

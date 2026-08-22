@@ -17,6 +17,7 @@ const logger = require('./logger');
 const LINK_BUILDER_URL = 'https://www.mercadolivre.com.br/afiliados/linkbuilder#hub';
 const SESSION_FILE     = path.resolve(process.cwd(), 'data', 'ml_session.json');
 const SCREENSHOT_DIR   = path.resolve(process.cwd(), 'logs');
+const MAX_SCREENSHOTS  = 30;   // so os mais recentes servem para diagnostico
 
 const UTM_FALLBACK = {
   utm_source   : 'telegram',
@@ -226,8 +227,9 @@ class AffiliateAutomation {
 
       await page.waitForTimeout(5000);
 
-      // Screenshot de debug para ver o resultado do "Gerar"
-      await this._screenshot(page, 'linkbuilder_after_gerar');
+      // Sem screenshot aqui: isto roda a cada link gerado com sucesso e acumulou 471
+      // PNGs / 60 MB em logs/. Se a extracao abaixo falhar, os caminhos de erro
+      // ('linkbuilder_result_not_found' / '_exception') capturam o mesmo estado.
 
       // ── Captura o resultado ──
       // O gerador mostra o link gerado num campo input no painel direito.
@@ -319,6 +321,21 @@ class AffiliateAutomation {
       const file = path.join(SCREENSHOT_DIR, `${name}_${Date.now()}.png`);
       await page.screenshot({ path: file, fullPage: true });
       logger.info(`[AffiliateAutomation] Screenshot: ${file}`);
+      this._podarScreenshots();
+    } catch { /* ignora */ }
+  }
+
+  // Mantem apenas os N screenshots mais recentes. Diagnostico so olha os ultimos
+  // mesmo, e sem poda a pasta cresce para sempre.
+  _podarScreenshots(manter = MAX_SCREENSHOTS) {
+    try {
+      const pngs = fs.readdirSync(SCREENSHOT_DIR)
+        .filter(f => f.startsWith('linkbuilder_') && f.endsWith('.png'))
+        .map(f => ({ f, t: fs.statSync(path.join(SCREENSHOT_DIR, f)).mtimeMs }))
+        .sort((a, b) => b.t - a.t);
+      for (const { f } of pngs.slice(manter)) {
+        fs.unlinkSync(path.join(SCREENSHOT_DIR, f));
+      }
     } catch { /* ignora */ }
   }
 }

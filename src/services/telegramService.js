@@ -14,6 +14,11 @@ const ML_LOGO_LOCAL = path.resolve(process.cwd(), 'data', 'ml_logo.jpg');
 const STORE_LABEL = { ml: 'CUPOM MERCADO LIVRE', shopee: 'CUPOM SHOPEE' };
 const STORE_BATCH_LABEL = { ml: 'Novo Cupom Mercado Livre!', shopee: 'Novo Cupom Shopee!' };
 const STORE_FALLBACK_LINK = { ml: 'mercadolivre.com.br', shopee: 'shopee.com.br' };
+// Rotulo da oferta. Desde que a Shopee entrou, o assinante recebe as duas lojas
+// misturadas — e frete/prazo mudam muito entre elas, entao a origem precisa aparecer.
+const STORE_OFFER_LABEL = { ml: 'Mercado Livre', shopee: 'Shopee' };
+// Fallback pelo id: ofertas gravadas antes do campo `store` existir nao o tem.
+const lojaDe = (offer) => offer.store || (String(offer.id).startsWith('SHOPEE-') ? 'shopee' : 'ml');
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -58,6 +63,16 @@ class TelegramService {
   // Mensagem de Oferta
   // ─────────────────────────────────────────────
 
+  // Botao inline: alvo de toque grande no mobile, onde esta quase toda a audiencia, e
+  // sobrevive a encaminhamento (ao contrario de teclado de resposta).
+  _opcoesOferta(offer) {
+    const loja = STORE_OFFER_LABEL[lojaDe(offer)];
+    return {
+      parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: [[{ text: `🛒 PEGAR NA ${loja.toUpperCase()}`, url: offer.link }]] },
+    };
+  }
+
   async sendOfferMessage(offer) {
     if (!offer.discount || offer.discount <= 0) return;
 
@@ -72,6 +87,7 @@ class TelegramService {
     // Só mostra o "De:" quando ele é de fato maior — evita "R$ X riscado / R$ X"
     if (offer.originalPrice > offer.price) msg += `🏷 De: <s>${escapeHtml(original)}</s>\n`;
     msg += `💰 Por: <b>${escapeHtml(current)}</b>  (📉 ${offer.discount}% OFF)\n`;
+    msg += `🏬 ${escapeHtml(STORE_OFFER_LABEL[lojaDe(offer)])}\n`;
 
     if (offer.timer) msg += `⏱ Termina em: ${escapeHtml(offer.timer)}\n`;
 
@@ -79,14 +95,14 @@ class TelegramService {
 
     if (offer.image) {
       try {
-        await this.bot.sendPhoto(this.chatId, offer.image, { caption: msg, parse_mode: 'HTML' });
+        await this.bot.sendPhoto(this.chatId, offer.image, { caption: msg, ...this._opcoesOferta(offer) });
         return;
       } catch (err) {
         logger.debug(`Foto oferta falhou, enviando texto: ${err.message}`);
       }
     }
 
-    await this.bot.sendMessage(this.chatId, msg, { parse_mode: 'HTML', disable_web_page_preview: false });
+    await this.bot.sendMessage(this.chatId, msg, { ...this._opcoesOferta(offer), disable_web_page_preview: false });
   }
 
   // ─────────────────────────────────────────────

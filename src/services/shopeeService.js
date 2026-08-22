@@ -178,6 +178,7 @@ class ShopeeService {
 
     return {
       id: `SHOPEE-${n.itemId}`,
+      store: 'shopee',
       title: n.productName,
       price,
       originalPrice,
@@ -194,6 +195,7 @@ class ShopeeService {
   _mapCampaignOffer(n) {
     return {
       id: `SHOPEE-CAMP-${crypto.createHash('md5').update(n.offerLink || n.offerName).digest('hex').substring(0, 12)}`,
+      store: 'shopee',
       title: n.offerName,
       price: 0,
       originalPrice: 0,
