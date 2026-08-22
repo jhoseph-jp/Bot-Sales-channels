@@ -4,6 +4,7 @@ const path = require('path');
 const { telegram } = require('../config/env');
 const logger = require('../utils/logger');
 const PriceCalculator = require('../utils/priceCalculator');
+const { textoMenorPreco } = require('../utils/priceHistory');
 
 const ML_LOGO_URL = 'https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadolibre/logo__large_plus.png';
 const ML_LOGO_LOCAL = path.resolve(process.cwd(), 'data', 'ml_logo.jpg');
@@ -88,6 +89,9 @@ class TelegramService {
     if (offer.originalPrice > offer.price) msg += `🏷 De: <s>${escapeHtml(original)}</s>\n`;
     msg += `💰 Por: <b>${escapeHtml(current)}</b>  (📉 ${offer.discount}% OFF)\n`;
     msg += `🏬 ${escapeHtml(STORE_OFFER_LABEL[lojaDe(offer)])}\n`;
+    // Selo de menor preco — so aparece quando o historico sustenta (ver utils/priceHistory)
+    const selo = textoMenorPreco(offer.menorPreco);
+    if (selo) msg += `🏆 <b>${escapeHtml(selo)}</b>\n`;
 
     if (offer.timer) msg += `⏱ Termina em: ${escapeHtml(offer.timer)}\n`;
 

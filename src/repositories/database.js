@@ -39,6 +39,18 @@ class Database {
         value TEXT
       );
 
+      -- Historico de preco por produto. So grava quando o preco MUDA (ver recordPrice):
+      -- guardar toda observacao geraria milhares de linhas identicas por dia, e o que
+      -- interessa para "menor preco" sao as mudancas.
+      CREATE TABLE IF NOT EXISTS price_history (
+        id       INTEGER PRIMARY KEY AUTOINCREMENT,
+        offer_id TEXT NOT NULL,
+        price    REAL NOT NULL,
+        seen_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_price_history_offer ON price_history (offer_id, seen_at);
+
       CREATE TABLE IF NOT EXISTS coupons (
         id            TEXT PRIMARY KEY,
         code          TEXT,
@@ -65,6 +77,7 @@ class Database {
       const migrations = [
         `ALTER TABLE offers ADD COLUMN category TEXT`,
         `ALTER TABLE offers ADD COLUMN original_link TEXT`,
+        `ALTER TABLE offers ADD COLUMN original_price REAL`,
         `ALTER TABLE coupons ADD COLUMN category TEXT`,
         `ALTER TABLE coupons ADD COLUMN discount_text TEXT`,
         `ALTER TABLE coupons ADD COLUMN link TEXT`,
@@ -127,13 +140,14 @@ class Database {
 
   async saveOffer(offer) {
     const sql = `
-      INSERT OR IGNORE INTO offers (id, title, price, discount, link, original_link, image, coupon, category)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO offers (id, title, price, original_price, discount, link, original_link, image, coupon, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const result = await this.run(sql, [
       offer.id,
       offer.title,
       offer.price,
+      offer.originalPrice || null,
       offer.discount,
       offer.link,
       offer.originalLink || null,
@@ -142,6 +156,50 @@ class Database {
       offer.category || null,
     ]);
     return result.changes > 0;
+  }
+
+  // ─────────────────────────────────────────────
+  // Historico de preco
+  // ─────────────────────────────────────────────
+
+  // Grava so quando o preco muda. Um ciclo observa centenas de produtos, quase todos
+  // pelo mesmo preco da vez anterior — gravar tudo inflaria o banco sem acrescentar
+  // informacao, ja que MIN() e a data da mudanca sao o que importa.
+  async recordPrice(offerId, price) {
+    const preco = Number(price);
+    if (!offerId || !Number.isFinite(preco) || preco <= 0) return false;
+
+    const ultimo = await this.get(
+      'SELECT price FROM price_history WHERE offer_id = ? ORDER BY seen_at DESC, id DESC LIMIT 1',
+      [offerId]
+    );
+    if (ultimo && Math.abs(Number(ultimo.price) - preco) < 0.005) return false;
+
+    await this.run('INSERT INTO price_history (offer_id, price) VALUES (?, ?)', [offerId, preco]);
+    return true;
+  }
+
+  // Menor preco, numero de observacoes e ha quantos dias o produto e acompanhado,
+  // dentro da janela. Alimenta utils/priceHistory.avaliarMenorPreco.
+  async getPriceStats(offerId, janelaDias = 90) {
+    if (!offerId) return null;
+    return this.get(
+      `SELECT MIN(price) AS menor,
+              COUNT(*)   AS observacoes,
+              CAST(julianday('now') - julianday(MIN(seen_at)) AS REAL) AS dias
+         FROM price_history
+        WHERE offer_id = ?
+          AND seen_at >= datetime('now', '-' || ? || ' days')`,
+      [offerId, janelaDias]
+    );
+  }
+
+  async prunePriceHistory(janelaDias = 180) {
+    const r = await this.run(
+      `DELETE FROM price_history WHERE seen_at < datetime('now', '-' || ? || ' days')`,
+      [janelaDias]
+    );
+    return r.changes || 0;
   }
 
   // ─────────────────────────────────────────────

@@ -9,6 +9,7 @@ const couponListener = require('./services/couponListener');
 const { isRelevantForAudience } = require('./utils/couponAudience');
 const { isFeminine } = require('./utils/nicheFilter');
 const { ordenarCandidatas } = require('./utils/offerRanking');
+const { avaliarMenorPreco, JANELA_DIAS } = require('./utils/priceHistory');
 const instagramService = require('./services/instagramService');
 const whatsappService = require('./services/whatsappService');
 
@@ -116,6 +117,8 @@ class BotApp {
     }
     try {
       await db.setConfig('last_offer_cycle', String(Date.now()));
+      const podadas = await db.prunePriceHistory(180).catch(() => 0);
+      if (podadas > 0) logger.info(`[Historico] ${podadas} registro(s) antigos podados.`);
       const offers = await mlService.getDailyOffers();
       const sent = await this._processOffers(offers, offersPerCycle(), false, true);
       logger.info(`[Ofertas do Dia] ${sent} novas enviadas.`);
@@ -305,6 +308,8 @@ class BotApp {
   // dispensa a checagem de gênero (keywords de busca já são femininas) e a
   // montagem de link afiliado que o fluxo do ML precisa.
   async _processShopeeOffers(offers, maxPerCycle) {
+    await this._registrarPrecos(offers);
+
     const newOffers = [];
     let semDesconto = 0, foraDeNicho = 0;
     for (const offer of offers) {
@@ -326,6 +331,7 @@ class BotApp {
     for (const offer of candidates) {
       const saved = await db.saveOffer(offer);
       if (!saved) continue;
+      await this._anexarMenorPreco(offer);
       await telegramService.enqueueOffer(offer);
       instagramService.enqueueOffer(offer);
       whatsappService.enqueueOffer(offer);
@@ -344,6 +350,10 @@ class BotApp {
   // ─────────────────────────────────────────────
 
   async _processOffers(offers, maxPerCycle, fetchTimer, spreadSends = false) {
+    // Registra o preco de TODA oferta vista, inclusive as ja publicadas antes: o valor
+    // do historico esta justamente em acompanhar o produto conhecido ao longo do tempo.
+    await this._registrarPrecos(offers);
+
     const newOffers = [];
     for (const offer of offers) {
       const dup = await db.isOfferProcessed(offer.id) || await db.isOfferUrlProcessed(offer.link);
@@ -389,6 +399,7 @@ class BotApp {
 
       const saved = await db.saveOffer(offer);
       if (!saved) continue;
+      await this._anexarMenorPreco(offer);
       await telegramService.enqueueOffer(offer);
       instagramService.enqueueOffer(offer);   // Caminho A: espelha as melhores no Instagram
       whatsappService.enqueueOffer(offer);    // Espelha no grupo do WhatsApp
@@ -402,6 +413,35 @@ class BotApp {
     }
 
     return sent;
+  }
+
+  // Alimenta o historico de preco. recordPrice so grava quando o valor muda, entao
+  // rodar isso sobre centenas de ofertas por ciclo custa leitura, nao escrita.
+  async _registrarPrecos(offers) {
+    let mudancas = 0;
+    for (const offer of offers) {
+      try {
+        if (await db.recordPrice(offer.id, offer.price)) mudancas++;
+      } catch (err) {
+        logger.debug(`[Historico] Falha ao gravar preco de ${offer.id}: ${err.message}`);
+      }
+    }
+    if (mudancas > 0) logger.info(`[Historico] ${mudancas} mudanca(s) de preco em ${offers.length} observadas.`);
+  }
+
+  // Anexa o selo de menor preco as ofertas que forem publicadas. Fica fora do
+  // _registrarPrecos porque so vale a pena consultar para as que vao ao ar.
+  async _anexarMenorPreco(offer) {
+    try {
+      const stats = await db.getPriceStats(offer.id, JANELA_DIAS);
+      offer.menorPreco = avaliarMenorPreco(stats, offer.price);
+      if (offer.menorPreco) {
+        logger.info(`[Historico] Menor preco em ${offer.menorPreco.dias} dias: ${offer.title.substring(0, 45)}`);
+      }
+    } catch (err) {
+      offer.menorPreco = null;
+      logger.debug(`[Historico] Falha ao avaliar menor preco: ${err.message}`);
+    }
   }
 
   // Quanto falta pro ciclo poder rodar de novo (0 = pode agora). O timestamp do último

@@ -12,6 +12,7 @@ const pino = require('pino');
 const { whatsapp } = require('../config/env');
 const logger = require('../utils/logger');
 const PriceCalculator = require('../utils/priceCalculator');
+const { textoMenorPreco } = require('../utils/priceHistory');
 
 const ML_LOGO_URL = 'https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadolibre/logo__large_plus.png';
 const ML_LOGO_LOCAL = path.resolve(process.cwd(), 'data', 'ml_logo.jpg');
@@ -162,6 +163,8 @@ class WhatsAppService {
     if (offer.originalPrice > offer.price) msg += `~${original}~\n`;   // WhatsApp: tachado usa um único ~
     msg += `💰 *${current}*\n`;
     msg += `📉 ${offer.discount}% OFF\n`;
+    const selo = textoMenorPreco(offer.menorPreco);
+    if (selo) msg += `🏆 *${selo}*\n`;
 
     if (offer.timer) msg += `⏱ Termina em: ${offer.timer}\n`;
 

@@ -1,6 +1,7 @@
 const axios  = require('axios');
 const logger = require('../utils/logger');
 const { settings } = require('../config/env');
+const { textoMenorPreco } = require('../utils/priceHistory');
 
 const IG_BASE     = 'https://graph.instagram.com/v21.0';
 const IG_USER_ID  = settings.instagram && settings.instagram.userId;
@@ -126,6 +127,8 @@ class InstagramService {
     if (old && old > price) L.push(`❌ De: R$ ${this._fmt(old)}`);
     if (price) L.push(`✅ Por: R$ ${this._fmt(price)}`);
     if (offer.discount) L.push(`📉 ${offer.discount}% OFF`);
+    const selo = textoMenorPreco(offer.menorPreco);
+    if (selo) L.push(`🏆 ${selo}`);
     if (offer.timer)    L.push(`⏰ Oferta relâmpago — corre!`);
     L.push('');
     L.push('🛒 Pega a sua pelo link na BIO 👉 @ofertadelas.promo');
