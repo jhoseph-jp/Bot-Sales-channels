@@ -8,6 +8,7 @@ const telegramService = require('./services/telegramService');
 const couponListener = require('./services/couponListener');
 const { isRelevantForAudience } = require('./utils/couponAudience');
 const { isFeminine } = require('./utils/nicheFilter');
+const { ordenarCandidatas } = require('./utils/offerRanking');
 const instagramService = require('./services/instagramService');
 const whatsappService = require('./services/whatsappService');
 
@@ -351,20 +352,14 @@ class BotApp {
 
     if (newOffers.length === 0) return 0;
 
-    // Reserva metade das vagas do ciclo pra roupas/calçados/acessórios quando houver
-    // candidatas — senão elas competem por desconto% direto com beleza/cozinha e ficam
-    // de fora. Dentro dessa reserva, respeita a ordem de prioridade das categorias-fonte
-    // (Calçados/Roupas e Bolsas > Camisetas e Regatas > Calças > Tênis > Acessórios)
-    // antes do desconto, seguindo a prioridade pedida para o scraping.
-    const isPriorityClothing = o => o.categoryPriority !== undefined && o.categoryPriority !== null;
-    const clothing = newOffers.filter(isPriorityClothing).sort((a, b) => a.categoryPriority - b.categoryPriority || b.discount - a.discount);
-    const rest = newOffers.filter(o => !isPriorityClothing(o)).sort((a, b) => b.discount - a.discount);
-
-    // Pega até 3x o limite para compensar descartes por gênero
-    const clothingQuota = Math.ceil(maxPerCycle / 2) * 3;
-    const reservedClothing = clothing.slice(0, clothingQuota);
-    const leftover = [...clothing.slice(clothingQuota), ...rest].sort((a, b) => b.discount - a.discount);
-    const candidates = [...reservedClothing, ...leftover].slice(0, maxPerCycle * 3);
+    // Ordena por desconto com bônus pela categoria-fonte (ver utils/offerRanking).
+    // A versão anterior reservava metade das vagas pra moda e ordenava por categoria
+    // antes do desconto — o que na prática reservava quase 100% das vagas, já que as 5
+    // URLs de categoria cobrem quase todo o catálogo, e fez uma oferta de 21% sair na
+    // frente de uma de 57%. Com o peso aditivo, moda segue na frente em disputa
+    // parelha, mas um desconto muito melhor de outro nicho passa.
+    // Mantém 3x o limite para compensar os descartes por gênero e por link de afiliado.
+    const candidates = ordenarCandidatas(newOffers).slice(0, maxPerCycle * 3);
 
     let sent = 0;
 
