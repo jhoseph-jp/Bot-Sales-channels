@@ -340,7 +340,11 @@ class MercadoLivreService {
             await page.waitForTimeout(1500);
             await this._scrollToLoadMore(page);
             const raw = await this._extractRawOffers(page);
-            raw.forEach(r => { r._fromFeminineCategory = true; r._categoryPriority = cat.priority; });
+            // NAO marca _fromFeminineCategory: essas categorias sao neutras de genero
+            // (MLB31447 e "Camisetas e Regatas", nao "Camisetas Femininas"). A flag faz o
+            // isFeminine pular o filtro de keyword e validar so o hard block, o que deixou
+            // passar "Regata Machao Oversized Unissex" e oculos masculinos para o canal.
+            raw.forEach(r => { r._categoryPriority = cat.priority; });
             allRaw.push(...raw);
             logger.info(`[Scraper] ${cat.label} (prioridade ${cat.priority}): ${raw.length} cards`);
           } catch (err) {

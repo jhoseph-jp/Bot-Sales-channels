@@ -48,6 +48,7 @@ const HARD_EXCLUSIONS = [
   'fralda descartável', 'fralda adulto', 'chupeta', 'mamadeira', 'berço',
   // ── Masculino ──
   'masculino', 'masculina', 'para homem', 'para ele', 'homem adulto', 'menino',
+  'machão', 'machao', 'barba', 'cueca',
   // ── Ferramentas / informática ──
   'furadeira', 'parafusadeira', 'esmerilhadeira', 'serra elétrica',
   'teclado gamer', 'mouse gamer', 'placa de vídeo', 'processador', 'memória ram',
@@ -179,6 +180,9 @@ const KITCHEN_KEYWORDS = [
 const UNISEX_ALLOWED = [
   'toalha', 'lençol', 'edredom', 'fronha', 'jogo de cama', 'colcha', 'cobertor',
   'porta-jóias', 'organizador de guarda-roupa', 'espelho camarim',
+  // Acessórios de cabelo/moda sem ambiguidade de gênero no mercado BR
+  'tiara', 'presilha de cabelo', 'xuxinha', 'scrunchie', 'lenço de cabelo',
+  'bolsa tiracolo', 'bolsa transversal', 'clutch', 'necessaire',
 ];
 
 // Palavras ambíguas que precisam de qualificador de gênero
@@ -186,6 +190,11 @@ const REQUIRES_QUALIFIER = [
   'blusa', 'calça', 'short', 'regata', 'top ', 'macacão', 'conjunto', 'pijama',
   'sapato', 'sandália', 'bota', 'tênis', 'tamanco',
   'bolsa', 'carteira', 'mochila', 'pochete',
+  // Acessórios de moda (MLB1451). Sem estes, o filtro por keyword derruba a categoria
+  // inteira — inclusive "Óculos Para Grau Oval Feminino", que traz o qualificador mas
+  // nao tinha termo ambiguo em que se apoiar.
+  'óculos', 'cinto', 'relógio', 'chapéu', 'boné', 'lenço', 'echarpe',
+  'cachecol', 'luva', 'bandana',
   'perfume', 'colônia', 'body splash', 'secador', 'prancha',
   'pulseira', 'anel', 'colar', 'brinco', 'hidratante', 'creme',
 ];
