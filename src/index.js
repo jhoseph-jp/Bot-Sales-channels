@@ -7,6 +7,7 @@ const shopeeService = require('./services/shopeeService');
 const telegramService = require('./services/telegramService');
 const couponListener = require('./services/couponListener');
 const { isRelevantForAudience } = require('./utils/couponAudience');
+const { isFeminine } = require('./utils/nicheFilter');
 const instagramService = require('./services/instagramService');
 const whatsappService = require('./services/whatsappService');
 
@@ -260,11 +261,19 @@ class BotApp {
   // montagem de link afiliado que o fluxo do ML precisa.
   async _processShopeeOffers(offers, maxPerCycle) {
     const newOffers = [];
+    let semDesconto = 0, foraDeNicho = 0;
     for (const offer of offers) {
-      if (!offer.discount || offer.discount <= 0) continue;
+      // Mesmo piso de desconto do ML: sem isto o ciclo publicava ofertas de 1-3% OFF,
+      // que queimam a credibilidade do canal.
+      if (!offer.discount || offer.discount < settings.minDiscount) { semDesconto++; continue; }
+      // As keywords de busca são femininas, mas os resultados derivam (buscar 'airfryer'
+      // devolve cesto e resistência avulsos da Philips). Aplica o mesmo filtro de nicho
+      // do ML — sem `fromFeminineCategory`, já que aqui não há categoria confiável.
+      if (!isFeminine(offer.title)) { foraDeNicho++; continue; }
       const dup = await db.isOfferProcessed(offer.id);
       if (!dup) newOffers.push(offer);
     }
+    logger.info(`[Shopee] ${offers.length} coletadas | ${semDesconto} abaixo de ${settings.minDiscount}% | ${foraDeNicho} fora de nicho | ${newOffers.length} candidatas`);
 
     const candidates = newOffers.sort((a, b) => b.discount - a.discount).slice(0, maxPerCycle);
 

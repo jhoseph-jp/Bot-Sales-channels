@@ -60,6 +60,16 @@ const HARD_EXCLUSIONS = [
   'disjuntor', 'cabo elétrico', 'mangueira', 'registro hidráulico', 'torneira',
   // ── Automotivo adicional ──
   'kit suspensão', 'embreagem', 'radiador automotivo', 'bateria automotiva',
+  // ── Peças de reposição de eletrodoméstico ──
+  // A busca por 'airfryer'/'panela' na Shopee traz muito cesto, cuba e resistência
+  // avulsos da Philips Walita. O termo 'airfryer' aparece no título, então o filtro
+  // de cozinha os aprovava — é preciso bloqueá-los explicitamente.
+  'reposição', 'reposicao', 'peça de reposição',
+  'cesta fritadeira', 'cesto fritadeira', 'cesta da fritadeira', 'cesto da fritadeira',
+  'cesta airfryer', 'cesto airfryer', 'cesta air fryer', 'cesto air fryer',
+  'suporte da cesta', 'suporte cesta', 'cuba suporte', 'suporte para cesta',
+  'motor e resistência', 'resistência fritadeira', 'resistência da fritadeira',
+  'grelha fritadeira', 'grelha da fritadeira', 'tampa da panela avulsa',
 ];
 
 // Nicho 1 — Roupas (máxima prioridade)
@@ -114,6 +124,11 @@ const BEAUTY_KEYWORDS = [
   'óleo capilar', 'leave-in', 'ampola capilar', 'ampola de tratamento',
   'creme de pentear', 'finalizador capilar', 'spray capilar',
   'kit cabelo', 'tratamento capilar',
+  // Tratamento capilar descrito pelo problema, não pelo termo técnico — títulos como
+  // "Mascara Hidratação 60 Segundos Cabelo Ressecado" não casavam com 'máscara capilar'
+  'hidratação capilar', 'cabelo ressecado', 'cabelo danificado', 'umectação',
+  'reconstrução capilar', 'cronograma capilar', 'botox capilar', 'progressiva',
+  'matizador', 'tonalizante', 'coloração de cabelo',
   // Skincare / rosto
   'sérum facial', 'hidratante facial', 'protetor solar facial', 'skincare',
   'retinol', 'vitamina c facial', 'niacinamida', 'ácido hialurônico',
