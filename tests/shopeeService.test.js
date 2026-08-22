@@ -89,3 +89,58 @@ describe('_mapProductOffer — formato comum', () => {
     expect(o.link).toBe('https://shopee.com.br/produto');
   });
 });
+
+describe('getNicheProducts — paginação e rotação de bloco', () => {
+  // A regressão que motivou: só a página 1 era lida, o pool vinha idêntico todo ciclo e,
+  // publicadas as ofertas dele, a Shopee sumiu do canal por horas.
+  const paginar = () => {
+    const chamadas = [];
+    shopeeService.getProductsPage = jest.fn(async (keyword, { page }) => {
+      chamadas.push({ keyword, page });
+      if (page > 8) return { products: [], hasNextPage: false };   // catálogo com 8 páginas
+      return {
+        products: [{ id: `SHOPEE-${keyword}-${page}` }],
+        hasNextPage: page < 8,
+      };
+    });
+    return chamadas;
+  };
+
+  // O espaçamento anti-rate-limit entre requisições soma dezenas de segundos reais —
+  // timers falsos deixam a varredura inteira rodar instantaneamente.
+  const varrer = async (opts) => {
+    jest.useFakeTimers();
+    try {
+      const promessa = shopeeService.getNicheProducts(opts);
+      await jest.runAllTimersAsync();
+      return await promessa;
+    } finally {
+      jest.useRealTimers();
+    }
+  };
+
+  afterEach(() => { delete shopeeService.getProductsPage; });
+
+  test('varre mais de uma página por keyword e deduplica por id', async () => {
+    const chamadas = paginar();
+    const produtos = await varrer({ block: 0 });
+
+    const paginasDaPrimeira = chamadas.filter(c => c.keyword === chamadas[0].keyword);
+    expect(paginasDaPrimeira.map(c => c.page)).toEqual([1, 2, 3]);
+    expect(new Set(produtos.map(p => p.id)).size).toBe(produtos.length);
+    expect(produtos.length).toBeGreaterThan(chamadas.length / 2);
+  });
+
+  test('bloco seguinte lê páginas novas, não o mesmo topo do catálogo', async () => {
+    const chamadas = paginar();
+    await varrer({ block: 1 });
+    expect(chamadas.filter(c => c.keyword === chamadas[0].keyword).map(c => c.page)).toEqual([4, 5, 6]);
+  });
+
+  test('keyword sem páginas suficientes cai de volta na página 1', async () => {
+    const chamadas = paginar();
+    const produtos = await varrer({ block: 3 });   // páginas 10-12
+    expect(chamadas.some(c => c.page === 1)).toBe(true);
+    expect(produtos.length).toBeGreaterThan(0);
+  });
+});

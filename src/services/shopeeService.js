@@ -5,6 +5,17 @@ const logger = require('../utils/logger');
 
 const GRAPHQL_URL = 'https://open-api.affiliate.shopee.com.br/graphql';
 
+// Paginação da busca por produto. Antes o ciclo lia só a página 1 com limit 20 de cada
+// keyword: 274 itens sempre iguais, dos quais 62 passavam nos filtros. Publicados esses
+// 62, todo ciclo seguinte via 100% duplicata e o canal ficou sem oferta Shopee. Agora
+// varre PAGES_PER_KEYWORD páginas de PAGE_LIMIT itens a partir de um bloco que gira a
+// cada ciclo, então o poço leva muito mais tempo para secar e a rotação ainda pega o
+// que entrou no catálogo desde a última passada.
+const PAGE_LIMIT = 50;
+const PAGES_PER_KEYWORD = 3;
+const PAGE_BLOCKS = 4;          // blocos rotacionados: páginas 1-3, 4-6, 7-9, 10-12
+const REQUEST_SPACING_MS = 500; // respeita o rate limit entre requisições
+
 // Palavras-chave de busca — reaproveita o nicho feminino já validado no ML.
 // Ponto de partida enxuto; ajustar/expandir depois de ver resultados reais da API
 // (a Shopee tem catálogo e categorização diferentes do ML).
@@ -102,7 +113,7 @@ class ShopeeService {
   // Produtos por palavra-chave — equivalente ao scraping por categoria do ML
   // ─────────────────────────────────────────────
 
-  async getProducts(keyword, { page = 1, limit = 20 } = {}) {
+  async getProductsPage(keyword, { page = 1, limit = PAGE_LIMIT } = {}) {
     const query = `
       query ShopeeProducts($keyword: String, $listType: Int, $sortType: Int, $page: Int, $limit: Int) {
         productOfferV2(keyword: $keyword, listType: $listType, sortType: $sortType, page: $page, limit: $limit) {
@@ -128,23 +139,61 @@ class ShopeeService {
     // listType/sortType: valores conforme doc (1 = mais recente); ajustar após teste real
     const data = await this._request(query, { keyword, listType: 1, sortType: 5, page, limit });
     const nodes = data?.productOfferV2?.nodes || [];
-    return nodes.map(n => this._mapProductOffer(n));
+    return {
+      products: nodes.map(n => this._mapProductOffer(n)),
+      hasNextPage: !!data?.productOfferV2?.pageInfo?.hasNextPage,
+    };
   }
 
-  // Varre as keywords de nicho feminino e agrega, deduplicando por itemId
-  async getNicheProducts() {
+  // Mantém a assinatura antiga (só a lista) para quem não se importa com paginação
+  async getProducts(keyword, opts = {}) {
+    const { products } = await this.getProductsPage(keyword, opts);
+    return products;
+  }
+
+  // Varre as keywords de nicho feminino e agrega, deduplicando por itemId.
+  // `block` (0..PAGE_BLOCKS-1) escolhe a faixa de páginas — quem chama gira o valor
+  // entre ciclos para não reler sempre o mesmo topo do catálogo.
+  async getNicheProducts({ block = 0, pagesPerKeyword = PAGES_PER_KEYWORD } = {}) {
     const seen = new Set();
     const all = [];
+    const startPage = (block % PAGE_BLOCKS) * PAGES_PER_KEYWORD + 1;
+
     for (const keyword of NICHE_KEYWORDS) {
-      const products = await this.getProducts(keyword).catch(() => []);
-      for (const p of products) {
-        if (seen.has(p.id)) continue;
-        seen.add(p.id);
-        all.push(p);
+      let paginasVazias = 0;
+      for (let i = 0; i < pagesPerKeyword; i++) {
+        const page = startPage + i;
+        const { products, hasNextPage } = await this.getProductsPage(keyword, { page })
+          .catch(() => ({ products: [], hasNextPage: false }));
+
+        for (const p of products) {
+          if (seen.has(p.id)) continue;
+          seen.add(p.id);
+          all.push(p);
+        }
+        await new Promise(r => setTimeout(r, REQUEST_SPACING_MS));
+
+        // Keyword com menos páginas que o bloco pedido devolveria nada o ciclo inteiro —
+        // volta para a página 1 em vez de desperdiçar a busca.
+        if (products.length === 0) paginasVazias++;
+        if (!hasNextPage || products.length === 0) break;
       }
-      await new Promise(r => setTimeout(r, 500)); // respeita rate limit entre buscas
+      if (paginasVazias > 0 && startPage > 1) {
+        const { products } = await this.getProductsPage(keyword, { page: 1 })
+          .catch(() => ({ products: [] }));
+        for (const p of products) {
+          if (seen.has(p.id)) continue;
+          seen.add(p.id);
+          all.push(p);
+        }
+        await new Promise(r => setTimeout(r, REQUEST_SPACING_MS));
+      }
     }
     return all;
+  }
+
+  get pageBlocks() {
+    return PAGE_BLOCKS;
   }
 
   // ─────────────────────────────────────────────

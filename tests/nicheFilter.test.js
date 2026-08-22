@@ -112,3 +112,18 @@ describe('isFeminine — entradas degeneradas', () => {
     expect(isFeminine(titulo)).toBe(false);
   });
 });
+
+describe('isHardBlocked — termos de palavra inteira', () => {
+  // 'ração' casava por substring dentro de "coração"/"decoração" depois do normalize()
+  // tirar o acento, derrubando moda feminina legítima como se fosse comida de pet.
+  test.each([
+    ['Blusa T-shirt Cruz Coração Confortável 100% Algodão', true],
+    ['Vestido Feminino Estampa Coração', true],
+    ['Camiseta Feminina Coração de Algodão', true],
+    ['Ração Golden Cães Adultos 15kg', false],
+    ['Rações Premium Gatos Castrados', false],
+    ['Porta Chaves Mdf Decorativo Para Decoração', false],
+  ])('%s -> %s', (titulo, esperado) => {
+    expect(isFeminine(titulo)).toBe(esperado);
+  });
+});

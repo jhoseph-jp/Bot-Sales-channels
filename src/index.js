@@ -295,7 +295,11 @@ class BotApp {
     }
     try {
       await db.setConfig('last_shopee_cycle', String(Date.now()));
-      const products = await shopeeService.getNicheProducts();
+      // Gira a faixa de páginas a cada ciclo: sem isso a busca relê sempre o mesmo topo
+      // do catálogo e, esgotadas as ofertas dele, o ciclo só encontra duplicata.
+      const block = Number(await db.getConfig('shopee_page_block')) || 0;
+      await db.setConfig('shopee_page_block', String((block + 1) % shopeeService.pageBlocks));
+      const products = await shopeeService.getNicheProducts({ block });
       const sent = await this._processShopeeOffers(products, offersPerCycle());
       logger.info(`[Shopee] ${sent} novas enviadas.`);
       if (sent > 0) this._syncWebsite();
@@ -313,7 +317,7 @@ class BotApp {
     await this._registrarPrecos(offers);
 
     const newOffers = [];
-    let semDesconto = 0, foraDeNicho = 0;
+    let semDesconto = 0, foraDeNicho = 0, jaPublicadas = 0;
     for (const offer of offers) {
       // Mesmo piso de desconto do ML: sem isto o ciclo publicava ofertas de 1-3% OFF,
       // que queimam a credibilidade do canal.
@@ -323,9 +327,10 @@ class BotApp {
       // do ML — sem `fromFeminineCategory`, já que aqui não há categoria confiável.
       if (!isFeminine(offer.title)) { foraDeNicho++; continue; }
       const dup = await db.isOfferProcessed(offer.id);
-      if (!dup) newOffers.push(offer);
+      if (dup) { jaPublicadas++; continue; }
+      newOffers.push(offer);
     }
-    logger.info(`[Shopee] ${offers.length} coletadas | ${semDesconto} abaixo de ${settings.minDiscount}% | ${foraDeNicho} fora de nicho | ${newOffers.length} candidatas`);
+    logger.info(`[Shopee] ${offers.length} coletadas | ${semDesconto} abaixo de ${settings.minDiscount}% | ${foraDeNicho} fora de nicho | ${jaPublicadas} já publicadas | ${newOffers.length} candidatas`);
 
     const candidates = newOffers.sort((a, b) => b.discount - a.discount).slice(0, maxPerCycle);
 

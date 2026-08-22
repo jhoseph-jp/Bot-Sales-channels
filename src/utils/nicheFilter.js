@@ -42,7 +42,7 @@ const HARD_EXCLUSIONS = [
   'lavagem de carro', 'lavagem automotiva', 'lavagem caminhão', 'lavagem ônibus',
   'shampoo automotivo', 'cera automotiva', 'desengraxante', 'pretinho automotivo',
   // ── Veterinário / pet ──
-  'veterinário', 'veterinária', 'para cão', 'para gato', 'ração',
+  'veterinário', 'veterinária', 'para cão', 'para gato',
   'antipulgas', 'coleira antipulgas',
   // ── Bebê / fraldas ──
   'fralda descartável', 'fralda adulto', 'chupeta', 'mamadeira', 'berço',
@@ -201,9 +201,17 @@ const REQUIRES_QUALIFIER = [
 
 const GENDER_QUALIFIERS = ['feminino', 'feminina', 'mulher', 'senhora', 'para ela', 'para mulher'];
 
+// Termos curtos demais para casar por substring — só bloqueiam como palavra inteira.
+// 'ração' estava na lista acima e, depois do normalize() tirar o acento, casava dentro
+// de "coração" e "decoração": vestido, camiseta e blusa com "Coração" no título vinham
+// sendo descartados como se fossem comida de pet.
+const HARD_EXCLUSIONS_EXACT = ['ração', 'rações'];
+
+
 function isHardBlocked(title) {
   const t = normalize(title);
-  return HARD_EXCLUSIONS.some(ex => t.includes(normalize(ex)));
+  if (HARD_EXCLUSIONS.some(ex => t.includes(normalize(ex)))) return true;
+  return HARD_EXCLUSIONS_EXACT.some(ex => new RegExp(`\b${normalize(ex)}\b`).test(t));
 }
 
 function isFeminine(title, fromFeminineCategory = false) {
@@ -238,6 +246,7 @@ module.exports = {
   isHardBlocked,
   isFeminine,
   HARD_EXCLUSIONS,
+  HARD_EXCLUSIONS_EXACT,
   // Listas usadas também na rotulagem de categoria (getCategoryInfo, em mercadoLivreService)
   HAIR_ELECTRONICS,
   SHOES_KEYWORDS,
