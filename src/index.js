@@ -10,6 +10,8 @@ const { isRelevantForAudience } = require('./utils/couponAudience');
 const { isFeminine } = require('./utils/nicheFilter');
 const { ordenarCandidatas } = require('./utils/offerRanking');
 const { avaliarMenorPreco, JANELA_DIAS } = require('./utils/priceHistory');
+const alertService = require('./services/alertService');
+const { avaliarFalhaAfiliado } = require('./utils/alertPolicy');
 const instagramService = require('./services/instagramService');
 const whatsappService = require('./services/whatsappService');
 
@@ -372,6 +374,9 @@ class BotApp {
     const candidates = ordenarCandidatas(newOffers).slice(0, maxPerCycle * 3);
 
     let sent = 0;
+    // Geracao de link de afiliado e o ponto unico de falha do fluxo do ML: depende de
+    // uma sessao de navegador salva que expira em silencio. Contamos para alertar.
+    let linkTentativas = 0, linkFalhas = 0;
 
     for (const offer of candidates) {
       if (sent >= maxPerCycle) break;
@@ -388,8 +393,10 @@ class BotApp {
       }
 
       const originalLink = offer.link;
+      linkTentativas++;
       const meluUrl = await mlService.buildAffiliateLink(offer.link);
       if (!meluUrl) {
+        linkFalhas++;
         logger.warn(`Sem link afiliado (próx. ciclo): ${offer.title.substring(0, 50)}`);
         continue;
       }
@@ -412,7 +419,32 @@ class BotApp {
       }
     }
 
+    await this._checarSaudeDoAfiliado(linkTentativas, linkFalhas);
     return sent;
+  }
+
+  // Alerta quando a geracao de link de afiliado para de funcionar. Sem isto o canal
+  // simplesmente seca: o bot segue "online", raspando e filtrando normalmente, mas
+  // descartando toda oferta na ultima etapa.
+  async _checarSaudeDoAfiliado(tentativas, falhas) {
+    try {
+      const CHAVE = 'afiliado_ml';
+      const ultimo = await alertService.ultimoAlerta(CHAVE);
+      const decisao = avaliarFalhaAfiliado({ tentativas, falhas }, ultimo);
+      if (!decisao.alertar) return;
+
+      const pct = Math.round(decisao.proporcao * 100);
+      await alertService.enviar(CHAVE, 'Link de afiliado do ML falhando', [
+        `Falharam <b>${falhas} de ${tentativas}</b> tentativas (${pct}%) no último ciclo.`,
+        '',
+        'Causa mais provável: a sessão salva do portal de afiliados expirou.',
+        'Correção: rodar <code>npm run save-session</code> na VPS e reiniciar o bot.',
+        '',
+        'Enquanto isso o canal não publica ofertas do Mercado Livre.',
+      ]);
+    } catch (err) {
+      logger.debug(`[Alerta] Falha ao avaliar saúde do afiliado: ${err.message}`);
+    }
   }
 
   // Alimenta o historico de preco. recordPrice so grava quando o valor muda, entao

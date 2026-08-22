@@ -17,6 +17,9 @@ const envSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   TELEGRAM_TOKEN: Joi.string().required(),
   TELEGRAM_CHAT_ID: Joi.string().required(),
+  // Canal privado do administrador para alertas operacionais. Opcional, mas sem ele
+  // os alertas ficam so no log — nunca caem no canal publico.
+  TELEGRAM_ADMIN_CHAT_ID: Joi.string().allow('').default(''),
   ML_CLIENT_ID: Joi.string().required(),
   ML_CLIENT_SECRET: Joi.string().required(),
   ML_ACCESS_TOKEN: Joi.string().allow(''),
@@ -48,7 +51,8 @@ module.exports = {
   env: envVars.NODE_ENV,
   telegram: {
     token: envVars.TELEGRAM_TOKEN,
-    chatId: envVars.TELEGRAM_CHAT_ID
+    chatId: envVars.TELEGRAM_CHAT_ID,
+    adminChatId: envVars.TELEGRAM_ADMIN_CHAT_ID
   },
   mercadoLivre: {
     clientId: envVars.ML_CLIENT_ID,
