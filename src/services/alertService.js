@@ -17,7 +17,12 @@ const db = require('../repositories/database');
 class AlertService {
   constructor() {
     this.chatId = telegram.adminChatId;
-    this.bot = this.chatId ? new TelegramBot(telegram.token, { polling: false }) : null;
+    // Mesmo timeout do telegramService: sem ele a requisicao pode ficar pendurada pra
+    // sempre numa conexao keep-alive morta — e o alerta e justamente o canal que
+    // deveria avisar que algo travou.
+    this.bot = this.chatId
+      ? new TelegramBot(telegram.token, { polling: false, request: { timeout: 30000 } })
+      : null;
 
     if (!this.chatId) {
       logger.warn('Alertas administrativos desativados: TELEGRAM_ADMIN_CHAT_ID não configurado no .env.');

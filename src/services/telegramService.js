@@ -21,13 +21,38 @@ const STORE_OFFER_LABEL = { ml: 'Mercado Livre', shopee: 'Shopee' };
 // Fallback pelo id: ofertas gravadas antes do campo `store` existir nao o tem.
 const lojaDe = (offer) => offer.store || (String(offer.id).startsWith('SHOPEE-') ? 'shopee' : 'ml');
 
+// A node-telegram-bot-api forca keep-alive (`options.forever = true`, hardcoded no
+// _request) e nao define timeout nenhum. Quando a rede mata em silencio uma conexao do
+// pool, a requisicao fica pendurada pra sempre: foi o que travou o canal de 2026-08-23
+// a 2026-08-27 sem uma linha de erro no log. `timeout` e repassado pro request pelo
+// merge de `options.request`; o watchdog cobre o que escapar dele (upload de stream).
+const REQUEST_TIMEOUT_MS = 30000;
+const WATCHDOG_MS = 45000;
+
+// Promise.race ja anexa handler na promise original, entao a que perder a corrida nao
+// vira unhandledRejection.
+function comLimite(promise, ms, rotulo) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${rotulo}: sem resposta em ${ms / 1000}s`)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 function escapeHtml(str) {
   return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 class TelegramService {
   constructor() {
-    this.bot = new TelegramBot(telegram.token, { polling: false });
+    this.bot = new TelegramBot(telegram.token, { polling: false, request: { timeout: REQUEST_TIMEOUT_MS } });
+    // Envolve os metodos de envio em vez de cada chamada: nenhum caminho novo escapa.
+    for (const metodo of ['sendPhoto', 'sendMessage']) {
+      const original = this.bot[metodo].bind(this.bot);
+      this.bot[metodo] = (...args) => comLimite(original(...args), WATCHDOG_MS, metodo);
+    }
     this.chatId = telegram.chatId;
     this.queue = [];
     this.isProcessing = false;
@@ -42,18 +67,41 @@ class TelegramService {
     if (this.isProcessing || this.queue.length === 0) return;
     this.isProcessing = true;
 
-    while (this.queue.length > 0) {
-      const { type, data } = this.queue.shift();
-      try {
-        if (type === 'couponBatch') await this.sendCouponBatchMessage(data.coupons, data.link, data.store);
-        else if (type === 'coupon') await this.sendCouponMessage(data);
-        else await this.sendOfferMessage(data);
-        await new Promise(r => setTimeout(r, 1500));
-      } catch (error) {
-        logger.error(`Fila: ${error.message}`);
+    try {
+      while (this.queue.length > 0) {
+        const item = this.queue.shift();
+        try {
+          await this._enviarComRetentativa(item);
+          await new Promise(r => setTimeout(r, 1500));
+        } catch (error) {
+          logger.error(`Fila: ${error.message}`);
+        }
       }
+    } finally {
+      // Precisa ser `finally`: se algo estourar fora do try interno, a fila nao pode
+      // ficar trancada com isProcessing=true — era esse o modo de falha silenciosa.
+      this.isProcessing = false;
     }
-    this.isProcessing = false;
+  }
+
+  _enviar({ type, data }) {
+    if (type === 'couponBatch') return this.sendCouponBatchMessage(data.coupons, data.link, data.store);
+    if (type === 'coupon') return this.sendCouponMessage(data);
+    return this.sendOfferMessage(data);
+  }
+
+  // Timeout quase sempre e a conexao reaproveitada, nao a API: a segunda tentativa pega
+  // socket novo e passa. Uma retentativa so, e nunca em lote de cupons — o lote e
+  // paginado e reenviar repetiria as paginas que ja sairam.
+  async _enviarComRetentativa(item) {
+    try {
+      return await this._enviar(item);
+    } catch (err) {
+      if (item.type === 'couponBatch') throw err;
+      logger.warn(`Telegram falhou (${err.message}). Retentando em 3s...`);
+      await new Promise(r => setTimeout(r, 3000));
+      return this._enviar(item);
+    }
   }
 
   enqueueOffer(offer) { this.queue.push({ type: 'offer', data: offer }); this.processQueue(); }
